@@ -16,13 +16,13 @@ static const float3 WaveLength = float3(6.8e-7, 5.5e-7, 4.4e-7);	//10-7 meter
 #define MAIN_SAMPLE_STEP_COUNT 32
 
 // ¦Ñ(h)
-float GetAtmDensityAt(float3 pos) {
+float2 GetAtmDensityAt(float3 pos) {
 	float height = length(pos - EARTH_CENTER) - EARTH_RADIUS;
-	return exp(-height / RAYLEIGH_SCALE_HEIGHT);
+	return float2(exp(-height / RAYLEIGH_SCALE_HEIGHT), exp(-height/ MIE_SCALE_HEIGHT));
 }
 
-float OpticalDepthRange(float3 start, float3 end) {
-	float result = 0.0f;
+float2 OpticalDepthRange(float3 start, float3 end) {
+	float2 result = 0.0f;
 	float3 step = (end - start) / OPTICAL_DEPTH_STEP_COUNT;
 	[unroll]
 	for (int i = 0; i < OPTICAL_DEPTH_STEP_COUNT; i++) {
@@ -55,51 +55,68 @@ float MieScatteringCoefficient() {
 }
 
 //Code from https://area.autodesk.com/blogs/game-dev-blog/volumetric-clouds/.
-float2 ray_trace_sphere(float3 center, float3 rd, float3 offset, float radius) {
+bool ray_trace_sphere(float3 center, float3 rd, float3 offset, float radius, out float t1,out float t2) {
 	float3 p = center - offset;
 	float b = dot(p, rd);
 	float c = dot(p, p) - (radius * radius);
 
 	float f = b * b - c;
 	if (f >= 0.0) {
-		float t1 = -b - sqrt(f);
-		float t2 = -b + sqrt(f);
-		return float2(t1, t2);
+		t1 = -b - sqrt(f);
+		t2 = -b + sqrt(f);
+		return true;
 	}
-	return -1.0;
-}
-//same as above
-void find_atmosphere_intersections(float3 ws_origin, float3 ws_ray, out float3 intersection) {
-	float2 inner_solutions = ray_trace_sphere(ws_origin, ws_ray, EARTH_CENTER, EARTH_RADIUS + ATMOSPHERE_TOP);
-	float t_inner_sphere = max(inner_solutions.x, inner_solutions.y);
-
-	intersection = ws_origin + ws_ray * t_inner_sphere;
+	return false;
 }
 
 float3 SampleColor(float3 startPos, float3 viewDir) {
 	float3 intersection;
-	find_atmosphere_intersections(startPos, viewDir, intersection);
-	float3 step = (intersection - startPos) / MAIN_SAMPLE_STEP_COUNT;
-	float ds = length(step);
-	float3 aggerated = 0.0;
-	float3 rayleiCoefficient = RayleighScatteringCoefficient();
-	float cosTheta = dot(viewDir, _WorldSpaceLightPos0.xyz);
-	float phase = RayleighPhaseFunction(cosTheta);
+	
+	float t1 = 0, t2 = 0;
 
-	float opticalDepthPA = 0;
+	//HIT EARTH TEST.
+	if (ray_trace_sphere(startPos, viewDir, EARTH_CENTER, EARTH_RADIUS - 200.0, t1, t2)) {
+		if (t2 > 0)
+			return 0.0;
+	}
+	
+	if (!ray_trace_sphere(startPos, viewDir, EARTH_CENTER, EARTH_RADIUS + ATMOSPHERE_TOP, t1, t2)) {
+		return 0;
+	}
+
+	if (t2 < 0)
+		return 0;
+	t1 = max(0, t1);
+
+	float3 step = (t2 - t1) * viewDir / MAIN_SAMPLE_STEP_COUNT;
+	float ds = length(step);
+	float4 aggerated = 0.0;
+	
+	float3 rayleiCoefficient = RayleighScatteringCoefficient();
+	float mieCoefficient = MieScatteringCoefficient();
+
+	float cosTheta = dot(viewDir, _WorldSpaceLightPos0.xyz);
+	float phase_r = RayleighPhaseFunction(cosTheta);
+	float phase_m = MiePhaseFunction(cosTheta);
+
+	float2 opticalDepthPA_rm = 0;
 	for (int i = 0; i < MAIN_SAMPLE_STEP_COUNT; i++) {
 		float3 samplePos = startPos + step * (i + 0.5);
-		float density = GetAtmDensityAt(samplePos);
-		float opticalDepthSegment = density * ds;
-		opticalDepthPA += opticalDepthSegment;
+		float2 density_rm = GetAtmDensityAt(samplePos);
+		float2 opticalDepthSegment_rm = density_rm * ds;
 
-		float3 C;
-		find_atmosphere_intersections(samplePos, _WorldSpaceLightPos0.xyz, C);
-		float opticalDepthCP = OpticalDepthRange(samplePos, C);
-		float3 transimittance = exp(
-			-rayleiCoefficient * (opticalDepthPA + opticalDepthCP)
-		);
-		aggerated += transimittance * opticalDepthSegment;
+		opticalDepthPA_rm += opticalDepthSegment_rm;
+
+		ray_trace_sphere(samplePos, _WorldSpaceLightPos0.xyz, EARTH_CENTER, EARTH_RADIUS + ATMOSPHERE_TOP, t1, t2);
+		float3 C = samplePos + _WorldSpaceLightPos0.xyz * t2;
+		float2 opticalDepthCP_rm = OpticalDepthRange(samplePos, C);
+		
+		float3 transimittance_r_rgb = rayleiCoefficient * (opticalDepthPA_rm.x + opticalDepthCP_rm.x);
+		float transimittance_m = mieCoefficient * (opticalDepthPA_rm.y + opticalDepthCP_rm.y);
+
+		aggerated.rgb += exp(-transimittance_r_rgb) * opticalDepthSegment_rm.x;
+		aggerated.a += exp(-transimittance_m) * opticalDepthSegment_rm.y;
 	}
-	return saturate(phase * rayleiCoefficient * aggerated);
+	return saturate(phase_r * rayleiCoefficient * aggerated.rgb + phase_m * mieCoefficient * aggerated.a);
+	//return saturate(phase * rayleiCoefficient * aggerated);
 }
