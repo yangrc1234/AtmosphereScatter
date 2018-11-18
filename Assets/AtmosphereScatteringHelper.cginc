@@ -3,7 +3,8 @@
 float _RayleighMolecularDensity;
 float _AirRefractionIndex;
 float _MieG;
-
+float _MieScatteringCoefficient;
+float3 _RayleighScatteringCoefficient;
 static const float3 WaveLength = float3(6.8e-7, 5.5e-7, 4.4e-7);	//10-7 meter
 
 #define EARTH_RADIUS 6.36e7
@@ -32,10 +33,6 @@ float2 OpticalDepthRange(float3 start, float3 end) {
 	return result;
 }
 
-float RayleighPhaseFunction(float cosTheta) {
-	return (3.0 / (16.0 * PI)) * (1 + cosTheta * cosTheta);
-}
-
 float3 RayleighScatteringCoefficient() {
 	float n_square_minus_1_square = pow(pow(_AirRefractionIndex, 2) - 1, 2); // 3e-7
 	float pi_pow3_m8 = 8 * pow(PI, 3);		//2.48e2
@@ -43,15 +40,15 @@ float3 RayleighScatteringCoefficient() {
 	return pi_pow3_m8 * n_square_minus_1_square / divider;	//about 4.6e-6
 }
 
+float RayleighPhaseFunction(float cosTheta) {
+	return (3.0 / 4.0) * (1 + cosTheta * cosTheta);
+}
+
 float MiePhaseFunction(float cosTheta) {
 	float MieGSquare = _MieG * _MieG;
 	float dividend = 3.0 * (1 - MieGSquare) * (1 + cosTheta * cosTheta);
-	float divisor = 8 * PI * (2 + MieGSquare) * pow(1 + MieGSquare - 2 * _MieG * cosTheta, 1.5);
+	float divisor = 2 * (2 + MieGSquare) * pow(1 + MieGSquare - 2 * _MieG * cosTheta, 1.5);
 	return dividend / divisor;
-}
-
-float MieScatteringCoefficient() {
-	return 2e-5;
 }
 
 //Code from https://area.autodesk.com/blogs/game-dev-blog/volumetric-clouds/.
@@ -93,7 +90,7 @@ float3 SampleColor(float3 startPos, float3 viewDir) {
 	float4 aggerated = 0.0;
 	
 	float3 rayleiCoefficient = RayleighScatteringCoefficient();
-	float mieCoefficient = MieScatteringCoefficient();
+	float mieCoefficient = _MieScatteringCoefficient * 1e-6;
 
 	float cosTheta = dot(viewDir, _WorldSpaceLightPos0.xyz);
 	float phase_r = RayleighPhaseFunction(cosTheta);
@@ -117,6 +114,6 @@ float3 SampleColor(float3 startPos, float3 viewDir) {
 		aggerated.rgb += exp(-transimittance_r_rgb) * opticalDepthSegment_rm.x;
 		aggerated.a += exp(-transimittance_m) * opticalDepthSegment_rm.y;
 	}
-	return saturate(phase_r * rayleiCoefficient * aggerated.rgb + phase_m * mieCoefficient * aggerated.a);
+	return saturate((phase_r * rayleiCoefficient * aggerated.rgb + phase_m * mieCoefficient * aggerated.a) / (4.0 * PI));
 	//return saturate(phase * rayleiCoefficient * aggerated);
 }

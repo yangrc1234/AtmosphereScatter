@@ -1,0 +1,94 @@
+﻿
+/*
+Helper functions. See https://ebruneton.github.io/precomputed_atmospheric_scattering/atmosphere/functions.glsl.html#transmittance_computation
+*/
+//Convert (0.0, 1.0) to actual texel position.
+
+#include "TransmittanceHelper.cginc"
+#include "SingleScatteringHelper.cginc"
+
+/*
+Pass in variables.
+*/
+float atmosphere_top_radius;
+float atmosphere_bot_radius;
+float atmosphere_sun_angular_radius;
+float3 rayleigh_scattering;
+float rayleigh_scale_height;
+float mie_extinction;
+float mie_scale_height;
+float absorption_extinction;
+float absorption_extinction_scale_height;
+
+AtmosphereParameters GetAtmParameters() {
+	return GetAtmosphereStruct(
+		atmosphere_top_radius,
+		atmosphere_bot_radius,
+		atmosphere_sun_angular_radius,
+		rayleigh_scattering,
+		rayleigh_scale_height,
+		mie_extinction,
+		mie_scale_height,
+		absorption_extinction,
+		absorption_extinction_scale_height
+	);
+}
+/*
+Transmittance LUT calculation.
+*/
+
+#pragma kernel CalculateTransmittanceLUT
+#pragma kernel CalculateSingleScatteringLUT
+RWTexture2D<float3> TransmittanceLUTResult;
+
+DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
+	IN(AtmosphereParameters) atmosphere, IN(vec2) uv_coord, IN(vec2) tex_size) {
+	Length r;
+	Number mu;
+	GetRMuFromTransmittanceTextureUv(
+		atmosphere, uv_coord, r, mu, tex_size.x, tex_size.y);
+	return ComputeTransmittanceToTopAtmosphereBoundary(atmosphere, r, mu);
+}
+
+[numthreads(1, 1, 1)]
+void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID)
+{
+	uint w, h;
+	TransmittanceLUTResult.GetDimensions(w, h);
+	AtmosphereParameters atm = GetAtmParameters();
+
+	float2 uv = vec2((0.5f + id.x) / w, (0.5f + id.y) / h);
+	float r, mu;
+
+	GetRMuFromTransmittanceTextureUv(
+		atm, uv, r, mu, w, h);
+
+	float3 result = ComputeTransmittanceToTopAtmosphereBoundaryTexture(
+		atm, uv, vec2(w, h)
+	);
+
+	TransmittanceLUTResult[id.xy] = result;
+}
+
+RWTexture3D<float3> SingleScatteringLUTResult;
+Texture2D<float3> TransmittanceLUT;
+void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
+	IN(TransmittanceTexture) transmittance_texture, IN(vec3) gl_frag_coord,
+	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie, uint WIDTH, uint HEIGHT, uint DEPTH);
+
+[numthreads(1, 1, 1)]
+void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID)
+{
+	uint w, h, d;
+	SingleScatteringLUTResult.GetDimensions(w, h, d);
+	AtmosphereParameters atm = GetAtmParameters();
+
+	float3 uvw = vec3((0.5f + id.x) / w, (0.5f + id.y) / h, (0.5f + id.z) / d);
+
+	float3 rayleigh, mie;
+	ComputeSingleScatteringTexture(
+		atm, TransmittanceLUT, uvw, rayleigh, mie, w, h, d
+	);
+
+	SingleScatteringLUTResult[id.xyz] = rayleigh + mie;
+}

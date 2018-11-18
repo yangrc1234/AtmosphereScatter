@@ -8,6 +8,8 @@ Shader "Skybox/AtmosphereScattering"
 		_RayleighMolecularDensity("RayleighMolecularDensity", float) = 2.504
 		_AirRefractionIndex("AirRefractionIndex", float) = 1.00029
 		_MieG("MieG", float) = 0.79
+		_RayleighScatteringCoefficient("RayleighScatteringCoefficient", Vector) = (4.6, 4.6, 4.6)
+		_MieScatteringCoefficient("MieScatteringCoefficient", float) = 2
 	}
 	SubShader
 	{
