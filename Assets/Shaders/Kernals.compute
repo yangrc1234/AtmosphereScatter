@@ -39,6 +39,7 @@ Transmittance LUT calculation.
 
 #pragma kernel CalculateTransmittanceLUT
 #pragma kernel CalculateSingleScatteringLUT
+
 RWTexture2D<float3> TransmittanceLUTResult;
 
 DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
@@ -70,25 +71,102 @@ void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID)
 	TransmittanceLUTResult[id.xy] = result;
 }
 
-RWTexture3D<float3> SingleScatteringLUTResult;
-Texture2D<float3> TransmittanceLUT;
+RWTexture3D<float3> SingleScatteringRayleighLUTResult;
+RWTexture3D<float3> SingleScatteringMieLUTResult;
+sampler2D TransmittanceLUT;
+int TransmittanceLUT_size[2];
+int Scattering_size[3];
+
 void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
-	IN(TransmittanceTexture) transmittance_texture, IN(vec3) gl_frag_coord,
-	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie, uint WIDTH, uint HEIGHT, uint DEPTH);
+	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) transmittance_size,
+	IN(vec3) gl_frag_coord,
+	IN(ScatteringTexture_Size) scattering_size,
+	OUT(IrradianceSpectrum) rayleigh,
+	OUT(IrradianceSpectrum) mie);
+
+
+void ComputeSingleScattering(
+	IN(AtmosphereParameters) atmosphere,
+	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
+	Length r, Number mu, Number mu_s,
+	bool ray_r_mu_intersects_ground,
+	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie);
+
+
+void ComputeSingleScatteringIntegrand(
+	IN(AtmosphereParameters) atmosphere,
+	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
+	Length r, Number mu, Number mu_s, Length d,
+	bool ray_r_mu_intersects_ground,
+	OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie);
+
+
+vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
+	Length r, Number mu, Number mu_s, int SCATTERING_TEXTURE_R_SIZE, int SCATTERING_TEXTURE_MU_SIZE, int SCATTERING_TEXTURE_MU_S_SIZE,
+	bool ray_r_mu_intersects_ground);
+
+void ComputeSingleScattering(
+	IN(AtmosphereParameters) atmosphere,
+	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
+	Length r, Number mu, Number mu_s,
+	bool ray_r_mu_intersects_ground,
+	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie);
 
 [numthreads(1, 1, 1)]
 void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID)
 {
 	uint w, h, d;
-	SingleScatteringLUTResult.GetDimensions(w, h, d);
+	SingleScatteringRayleighLUTResult.GetDimensions(w, h, d);
 	AtmosphereParameters atm = GetAtmParameters();
 
 	float3 uvw = vec3((0.5f + id.x) / w, (0.5f + id.y) / h, (0.5f + id.z) / d);
 
 	float3 rayleigh, mie;
 	ComputeSingleScatteringTexture(
-		atm, TransmittanceLUT, uvw, rayleigh, mie, w, h, d
+		atm, TransmittanceLUT, uint2(TransmittanceLUT_size), uvw, uint3(Scattering_size), rayleigh, mie
 	);
 
-	SingleScatteringLUTResult[id.xyz] = rayleigh + mie;
+	float r, mu, mu_s;
+	bool ray_r_mu_intersects_ground;
+	GetRMuMuSNuFromScatteringTextureUvwz(atm, uvw,
+		r, mu, mu_s, ray_r_mu_intersects_ground, uint3(Scattering_size));
+
+
+	ComputeSingleScatteringIntegrand(
+		atm, TransmittanceLUT, uint2(TransmittanceLUT_size), r, mu, mu_s, 1e5,
+		ray_r_mu_intersects_ground, rayleigh, mie);
+	{
+		Length r_d = ClampRadius(atm, sqrt(d * d + 2.0 * r * mu * d + r * r));
+
+		//Here we ignore azimuth, and calculate nu assuming all points are on the same plane.
+		Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s - (1 - mu * mu) * (1 - mu_s * mu_s);
+		Number mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
+
+		DimensionlessSpectrum transmittance =
+			GetTransmittance(
+				atm, TransmittanceLUT, uint2(TransmittanceLUT_size), r, mu, d,
+				ray_r_mu_intersects_ground) *
+			GetTransmittanceToSun(
+				atm, TransmittanceLUT, uint2(TransmittanceLUT_size), r_d, mu_s_d);
+		rayleigh = transmittance * GetScaleHeight(
+			r_d - atm.bottom_radius, atm.rayleigh_scale_height
+		);
+		mie = transmittance * GetScaleHeight(
+			r_d - atm.bottom_radius, atm.mie_scale_height
+		);
+	}
+	//ComputeSingleScattering(atm, TransmittanceLUT, uint2(TransmittanceLUT_size), r, mu, mu_s, ray_r_mu_intersects_ground, rayleigh, mie);
+	SingleScatteringMieLUTResult[id.xyz] = rayleigh == 0;
+	SingleScatteringRayleighLUTResult[id.xyz] = rayleigh;
+}
+
+
+
+[numthreads(1,1,1)]
+void CalculateMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
+	
 }

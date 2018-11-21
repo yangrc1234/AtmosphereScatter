@@ -4,7 +4,7 @@
 #include "Common.cginc"
 
 vec2 GetTransmittanceTextureUvFromRMu(IN(AtmosphereParameters) atmosphere,
-	Length r, Number mu, int TRANSMITTANCE_TEXTURE_WIDTH, int TRANSMITTANCE_TEXTURE_HEIGHT) {
+	Length r, Number mu, uint2 texture_size) {
 	// Distance to top atmosphere boundary for a horizontal ray at ground level.
 	Length H = sqrt(atmosphere.top_radius * atmosphere.top_radius -
 		atmosphere.bottom_radius * atmosphere.bottom_radius);
@@ -18,8 +18,8 @@ vec2 GetTransmittanceTextureUvFromRMu(IN(AtmosphereParameters) atmosphere,
 	Length d_max = rho + H;
 	Number x_mu = (d - d_min) / (d_max - d_min);
 	Number x_r = rho / H;
-	return vec2(GetTextureCoordFromUnitRange(x_mu, TRANSMITTANCE_TEXTURE_WIDTH),
-		GetTextureCoordFromUnitRange(x_r, TRANSMITTANCE_TEXTURE_HEIGHT));
+	return vec2(GetTextureCoordFromUnitRange(x_mu, texture_size.x),
+		GetTextureCoordFromUnitRange(x_r, texture_size.y));
 }
 
 void GetRMuFromTransmittanceTextureUv(IN(AtmosphereParameters) atmosphere,
@@ -47,25 +47,23 @@ void GetRMuFromTransmittanceTextureUv(IN(AtmosphereParameters) atmosphere,
 DimensionlessSpectrum GetTransmittanceToTopAtmosphereBoundary(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
 	Length r, Number mu) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 
-	int width, height;
-	transmittance_texture.GetDimensions(width, height);
-	vec2 uv = GetTransmittanceTextureUvFromRMu(atmosphere, r, mu, width, height);
-	uv.x *= width;
-	uv.y *= height;
-	return DimensionlessSpectrum(texture(transmittance_texture, uv));
+	vec2 uv = GetTransmittanceTextureUvFromRMu(atmosphere, r, mu, texture_size);
+	return DimensionlessSpectrum(tex2Dlod(transmittance_texture, float4(uv, 0, 0)).rgb);
 }
 
 DimensionlessSpectrum GetTransmittanceToSun(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
 	Length r, Number mu_s) {
 	Number sin_theta_h = atmosphere.bottom_radius / r;
 	Number cos_theta_h = -sqrt(max(1.0 - sin_theta_h * sin_theta_h, 0.0));
 	return GetTransmittanceToTopAtmosphereBoundary(
-		atmosphere, transmittance_texture, r, mu_s) *
+		atmosphere, transmittance_texture, texture_size, r, mu_s) *
 		smoothstep(-sin_theta_h * atmosphere.sun_angular_radius / rad,
 			sin_theta_h * atmosphere.sun_angular_radius / rad,
 			mu_s - cos_theta_h);
@@ -122,6 +120,7 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
 DimensionlessSpectrum GetTransmittance(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
 	Length r, Number mu, Length d, bool ray_r_mu_intersects_ground) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
@@ -133,17 +132,17 @@ DimensionlessSpectrum GetTransmittance(
 	if (ray_r_mu_intersects_ground) {
 		return min(
 			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, r_d, -mu_d) /
+				atmosphere, transmittance_texture, texture_size, r_d, -mu_d) /
 			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, r, -mu),
+				atmosphere, transmittance_texture, texture_size, r, -mu),
 			DimensionlessSpectrum(1.0, 1.0, 1.0));
 	}
 	else {
 		return min(
 			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, r, mu) /
+				atmosphere, transmittance_texture, texture_size, r, mu) /
 			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, r_d, mu_d),
+				atmosphere, transmittance_texture, texture_size, r_d, mu_d),
 			DimensionlessSpectrum(1.0, 1.0, 1.0));
 	}
 }

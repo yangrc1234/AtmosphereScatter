@@ -7,6 +7,7 @@
 void ComputeSingleScatteringIntegrand(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
 	Length r, Number mu, Number mu_s, Length d,
 	bool ray_r_mu_intersects_ground,
 	OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie) {
@@ -18,10 +19,10 @@ void ComputeSingleScatteringIntegrand(
 	
 	DimensionlessSpectrum transmittance =
 		GetTransmittance(
-			atmosphere, transmittance_texture, r, mu, d,
+			atmosphere, transmittance_texture, texture_size, r, mu, d,
 			ray_r_mu_intersects_ground) *
 		GetTransmittanceToSun(
-			atmosphere, transmittance_texture, r_d, mu_s_d);
+			atmosphere, transmittance_texture, texture_size, r_d, mu_s_d);
 	rayleigh = transmittance * GetScaleHeight(
 		r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height
 	);
@@ -43,6 +44,7 @@ InverseSolidAngle MiePhaseFunction(Number g, Number nu) {
 void ComputeSingleScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) texture_size,
 	Length r, Number mu, Number mu_s,
 	bool ray_r_mu_intersects_ground,
 	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie) {
@@ -64,20 +66,21 @@ void ComputeSingleScattering(
 		// The Rayleigh and Mie single scattering at the current sample point.
 		DimensionlessSpectrum rayleigh_i;
 		DimensionlessSpectrum mie_i;
-		ComputeSingleScatteringIntegrand(atmosphere, transmittance_texture,
+		ComputeSingleScatteringIntegrand(atmosphere, transmittance_texture, texture_size,
 			r, mu, mu_s, d_i, ray_r_mu_intersects_ground, rayleigh_i, mie_i);
 		// Sample weight (from the trapezoidal rule).
 		Number weight_i = (i == 0 || i == SAMPLE_COUNT) ? 0.5 : 1.0;
 		rayleigh_sum += rayleigh_i * weight_i;
 		mie_sum += mie_i * weight_i;
 	}
+	//Phase function terms are not added yet. See GetScattering.(And also, we need to store rayleigh and mie seprately, since they use different phase functions.)
 	rayleigh = rayleigh_sum * dx * atmosphere.solar_irradiance *
 		atmosphere.rayleigh_scattering;
 	mie = mie_sum * dx * atmosphere.solar_irradiance * atmosphere.mie_extinction;
 }
 
 vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
-	Length r, Number mu, Number mu_s, int SCATTERING_TEXTURE_R_SIZE, int SCATTERING_TEXTURE_MU_SIZE, int SCATTERING_TEXTURE_MU_S_SIZE,
+	Length r, Number mu, Number mu_s, uint3 texture_size,
 	bool ray_r_mu_intersects_ground) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
@@ -89,7 +92,7 @@ vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
 	// Distance to the horizon.
 	Length rho =
 		SafeSqrt(r * r - atmosphere.bottom_radius * atmosphere.bottom_radius);
-	Number u_r = GetTextureCoordFromUnitRange(rho / H, SCATTERING_TEXTURE_R_SIZE);
+	Number u_r = GetTextureCoordFromUnitRange(rho / H, texture_size.z);
 
 	// Discriminant of the quadratic equation for the intersections of the ray
 	// (r,mu) with the ground (see RayIntersectsGround).
@@ -104,7 +107,7 @@ vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
 		Length d_min = r - atmosphere.bottom_radius;
 		Length d_max = rho;
 		u_mu = 0.5 - 0.5 * GetTextureCoordFromUnitRange(d_max == d_min ? 0.0 :
-			(d - d_min) / (d_max - d_min), SCATTERING_TEXTURE_MU_SIZE / 2);
+			(d - d_min) / (d_max - d_min), texture_size.y / 2);
 	}
 	else {
 		// Distance to the top atmosphere boundary for the ray (r,mu), and its
@@ -114,7 +117,7 @@ vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
 		Length d_min = atmosphere.top_radius - r;
 		Length d_max = rho + H;
 		u_mu = 0.5 + 0.5 * GetTextureCoordFromUnitRange(
-			(d - d_min) / (d_max - d_min), SCATTERING_TEXTURE_MU_SIZE / 2);
+			(d - d_min) / (d_max - d_min), texture_size.y / 2);
 	}
 
 	Length d = DistanceToTopAtmosphereBoundary(
@@ -125,13 +128,15 @@ vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
 	Number A =
 		-2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
 	Number u_mu_s = GetTextureCoordFromUnitRange(
-		max(1.0 - a / A, 0.0) / (1.0 + a), SCATTERING_TEXTURE_MU_S_SIZE);
+		max(1.0 - a / A, 0.0) / (1.0 + a), texture_size.x);
 
 	return vec3(u_mu_s, u_mu, u_r);
 }
 
 void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
-	IN(vec3) uvwz, OUT(Length) r, OUT(Number) mu, OUT(Number) mu_s, OUT(bool) ray_r_mu_intersects_ground, uint SCATTERING_TEXTURE_MU_S_SIZE, uint SCATTERING_TEXTURE_MU_SIZE, uint SCATTERING_TEXTURE_R_SIZE) {
+	IN(vec3) uvwz, OUT(Length) r, OUT(Number) mu, OUT(Number) mu_s, OUT(bool) ray_r_mu_intersects_ground,
+	IN(ScatteringTexture_Size) scattering_size
+) {
 	assert(uvwz.x >= 0.0 && uvwz.x <= 1.0);
 	assert(uvwz.y >= 0.0 && uvwz.y <= 1.0);
 	assert(uvwz.z >= 0.0 && uvwz.z <= 1.0);
@@ -141,7 +146,7 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		atmosphere.bottom_radius * atmosphere.bottom_radius);
 	// Distance to the horizon.
 	Length rho =
-		H * GetUnitRangeFromTextureCoord(uvwz.z, SCATTERING_TEXTURE_R_SIZE);
+		H * GetUnitRangeFromTextureCoord(uvwz.z, scattering_size.z);
 	r = sqrt(rho * rho + atmosphere.bottom_radius * atmosphere.bottom_radius);
 
 	if (uvwz.y < 0.5) {
@@ -151,7 +156,7 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		Length d_min = r - atmosphere.bottom_radius;
 		Length d_max = rho;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
-			1.0 - 2.0 * uvwz.y, SCATTERING_TEXTURE_MU_SIZE / 2);
+			1.0 - 2.0 * uvwz.y, scattering_size.y / 2);
 		mu = d == 0.0 ? Number(-1.0) :
 			ClampCosine(-(rho * rho + d * d) / (2.0 * r * d));
 		ray_r_mu_intersects_ground = true;
@@ -163,14 +168,14 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		Length d_min = atmosphere.top_radius - r;
 		Length d_max = rho + H;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
-			2.0 * uvwz.y - 1.0, SCATTERING_TEXTURE_MU_SIZE / 2);
+			2.0 * uvwz.y - 1.0, scattering_size.y / 2);
 		mu = d == 0.0 ? Number(1.0) :
 			ClampCosine((H * H - rho * rho - d * d) / (2.0 * r * d));
 		ray_r_mu_intersects_ground = false;
 	}
 
 	Number x_mu_s =
-		GetUnitRangeFromTextureCoord(uvwz.x, SCATTERING_TEXTURE_MU_S_SIZE);
+		GetUnitRangeFromTextureCoord(uvwz.x, scattering_size.x);
 	Length d_min = atmosphere.top_radius - atmosphere.bottom_radius;
 	Length d_max = H;
 	Number A =
@@ -182,29 +187,33 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 }
 
 void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
-	IN(TransmittanceTexture) transmittance_texture, IN(vec3) gl_frag_coord,
-	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie, uint WIDTH, uint HEIGHT, uint DEPTH) {
+	IN(TransmittanceTexture) transmittance_texture,
+	IN(TransmittanceTexture_Size) transmittance_size,
+	IN(vec3) gl_frag_coord,
+	IN(ScatteringTexture_Size) scattering_size,
+	OUT(IrradianceSpectrum) rayleigh, 
+	OUT(IrradianceSpectrum) mie) {
 
 	Length r;
 	Number mu;
 	Number mu_s;
 	bool ray_r_mu_intersects_ground;
 	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, gl_frag_coord,
-		r, mu, mu_s, ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
-	ComputeSingleScattering(atmosphere, transmittance_texture,
+		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	ComputeSingleScattering(atmosphere, transmittance_texture, transmittance_size,
 		r, mu, mu_s, ray_r_mu_intersects_ground, rayleigh, mie);
 }
 
 RadianceSpectrum GetScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(ScatteringTexture) scattering_texture,
-	Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground,
-	uint WIDTH, uint HEIGHT, uint DEPTH
+	uint3 texture_size,
+	Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
+	
 	) {
 	vec3 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
-		atmosphere, r, mu, mu_s, ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
-	uvwz *= vec3(WIDTH, HEIGHT, DEPTH);
-	return texture(scattering_texture, uvwz);
+		atmosphere, r, mu, mu_s, texture_size, ray_r_mu_intersects_ground);
+	return tex3D(scattering_texture, uvwz).rgb;
 }
 
 RadianceSpectrum GetScattering(
@@ -212,27 +221,28 @@ RadianceSpectrum GetScattering(
 	IN(ReducedScatteringTexture) single_rayleigh_scattering_texture,
 	IN(ReducedScatteringTexture) single_mie_scattering_texture,
 	IN(ScatteringTexture) multiple_scattering_texture,
+	uint3 texture_size,
 	Length r, Number mu, Number mu_s,
 	bool ray_r_mu_intersects_ground,
-	int scattering_order,
-	uint WIDTH, uint HEIGHT, uint DEPTH) {
+	int scattering_order
+	) {
 
 	Number nu = mu * mu_s - (1 - mu * mu) * (1 - mu_s * mu_s);
 
 	if (scattering_order == 1) {
 		IrradianceSpectrum rayleigh = GetScattering(
-			atmosphere, single_rayleigh_scattering_texture, r, mu, mu_s,
-			ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
+			atmosphere, single_rayleigh_scattering_texture, texture_size, r, mu, mu_s,
+			ray_r_mu_intersects_ground);
 		IrradianceSpectrum mie = GetScattering(
-			atmosphere, single_mie_scattering_texture, r, mu, mu_s,
-			ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
+			atmosphere, single_mie_scattering_texture, texture_size, r, mu, mu_s,
+			ray_r_mu_intersects_ground);
 		return rayleigh * RayleighPhaseFunction(nu) +
 			mie * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
 	}
 	else {
 		return GetScattering(
-			atmosphere, multiple_scattering_texture, r, mu, mu_s, 
-			ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
+			atmosphere, multiple_scattering_texture, texture_size, r, mu, mu_s,
+			ray_r_mu_intersects_ground);
 	}
 }
 

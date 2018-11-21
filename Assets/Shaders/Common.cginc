@@ -7,16 +7,18 @@
 #define DimensionlessSpectrum float3
 #define IrradianceSpectrum float3
 #define RadianceSpectrum float3
-#define TransmittanceTexture Texture2D<float3>
-#define ScatteringTexture Texture3D<float3>
-#define ReducedScatteringTexture Texture3D<float3>
+#define TransmittanceTexture sampler2D
+#define TransmittanceTexture_Size uint2
+#define ScatteringTexture sampler3D
+#define ScatteringTexture_Size uint3
+#define ReducedScatteringTexture sampler3D
+#define ReducedScatteringTexture_Size uint3
 #define InverseSolidAngle float
 #define vec2 float2
 #define vec3 float3
 #define vec4 float4
 #define IN(x) x
 #define OUT(x) out x
-#define texture(tex, uv) tex[uv]
 #define assert(x) ;
 
 #define PI 3.1415926
