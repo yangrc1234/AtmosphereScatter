@@ -47,7 +47,7 @@ void GetRMuFromTransmittanceTextureUv(IN(AtmosphereParameters) atmosphere,
 DimensionlessSpectrum GetTransmittanceToTopAtmosphereBoundary(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) texture_size,
+	uint2 texture_size,
 	Length r, Number mu) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 
@@ -58,7 +58,7 @@ DimensionlessSpectrum GetTransmittanceToTopAtmosphereBoundary(
 DimensionlessSpectrum GetTransmittanceToSun(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) texture_size,
+	uint2 texture_size,
 	Length r, Number mu_s) {
 	Number sin_theta_h = atmosphere.bottom_radius / r;
 	Number cos_theta_h = -sqrt(max(1.0 - sin_theta_h * sin_theta_h, 0.0));
@@ -120,7 +120,7 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
 DimensionlessSpectrum GetTransmittance(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) texture_size,
+	uint2 texture_size,
 	Length r, Number mu, Length d, bool ray_r_mu_intersects_ground) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);

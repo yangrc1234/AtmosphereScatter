@@ -7,7 +7,7 @@
 void ComputeSingleScatteringIntegrand(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) texture_size,
+	uint2 texture_size,
 	Length r, Number mu, Number mu_s, Length d,
 	bool ray_r_mu_intersects_ground,
 	OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie) {
@@ -44,7 +44,7 @@ InverseSolidAngle MiePhaseFunction(Number g, Number nu) {
 void ComputeSingleScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) texture_size,
+	uint2 texture_size,
 	Length r, Number mu, Number mu_s,
 	bool ray_r_mu_intersects_ground,
 	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie) {
@@ -135,7 +135,7 @@ vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
 
 void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 	IN(vec3) uvwz, OUT(Length) r, OUT(Number) mu, OUT(Number) mu_s, OUT(bool) ray_r_mu_intersects_ground,
-	IN(ScatteringTexture_Size) scattering_size
+	uint3 scattering_size
 ) {
 	assert(uvwz.x >= 0.0 && uvwz.x <= 1.0);
 	assert(uvwz.y >= 0.0 && uvwz.y <= 1.0);
@@ -156,15 +156,16 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		Length d_min = r - atmosphere.bottom_radius;
 		Length d_max = rho;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
-			1.0 - 2.0 * uvwz.y, scattering_size.y / 2);
+			1.0 - 2.0 * uvwz.y, scattering_size.y / 2); 
 		mu = d == 0.0 ? Number(-1.0) :
 			ClampCosine(-(rho * rho + d * d) / (2.0 * r * d));
 		ray_r_mu_intersects_ground = true;
-	}
+	} 
 	else {
 		// Distance to the top atmosphere boundary for the ray (r,mu), and its
 		// minimum and maximum values over all mu - obtained for (r,1) and
 		// (r,mu_horizon) - from which we can recover mu:
+		
 		Length d_min = atmosphere.top_radius - r;
 		Length d_max = rho + H;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
@@ -188,9 +189,9 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 
 void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
-	IN(TransmittanceTexture_Size) transmittance_size,
+	uint2 transmittance_size,
 	IN(vec3) gl_frag_coord,
-	IN(ScatteringTexture_Size) scattering_size,
+	uint3 scattering_size,
 	OUT(IrradianceSpectrum) rayleigh, 
 	OUT(IrradianceSpectrum) mie) {
 

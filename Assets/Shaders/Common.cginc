@@ -8,11 +8,8 @@
 #define IrradianceSpectrum float3
 #define RadianceSpectrum float3
 #define TransmittanceTexture sampler2D
-#define TransmittanceTexture_Size uint2
 #define ScatteringTexture sampler3D
-#define ScatteringTexture_Size uint3
 #define ReducedScatteringTexture sampler3D
-#define ReducedScatteringTexture_Size uint3
 #define InverseSolidAngle float
 #define vec2 float2
 #define vec3 float3
