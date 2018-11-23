@@ -155,13 +155,6 @@ void CalculateMultipleScatteringDensityLUT(uint3 id : SV_DispatchThreadID) {
 		uvw, ScatteringOrder
 	);
 
-	Length r;
-	Number mu;
-	Number mu_s;
-	bool ray_r_mu_intersects_ground;
-	GetRMuMuSNuFromScatteringTextureUvwz(atm, uvw,
-		r, mu, mu_s, ray_r_mu_intersects_ground, ScatteringSize);
-
 	MultipleScatteringDensityResult[id.xyz] = density;
 }
 
@@ -220,8 +213,6 @@ void CalculateGroundDirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
 
 	float3 irradiance = ComputeDirectIrradianceTexture(atm, TransmittanceLUT, TransmittanceSize, uvw, IrradianceSize);
 
-	float r, mu_s;
-	GetRMuSFromIrradianceTextureUv(atm, uvw, r, mu_s, IrradianceSize);
 	GroundDirectIrradianceResult[id.xy] = irradiance;
 }
 

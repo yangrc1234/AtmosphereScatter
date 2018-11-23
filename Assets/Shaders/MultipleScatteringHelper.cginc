@@ -75,7 +75,8 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 			// the sum of a term given by the precomputed scattering texture for the
 			// (n-1)-th order:
 			Number nu1 = dot(omega_s, omega_i);
-			RadianceSpectrum incident_radiance = GetScattering(atmosphere,
+			RadianceSpectrum incident_radiance = RadianceSpectrum(0.0f, 0.0f, 0.0f);
+			incident_radiance += GetScattering(atmosphere,
 				single_rayleigh_scattering_texture, single_mie_scattering_texture,
 				multiple_scattering_texture, scattering_size, r, omega_i.z, mu_s,
 				ray_r_theta_intersects_ground, scattering_order - 1);
@@ -90,7 +91,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 				atmosphere, irradiance_texture, irradiance_size, atmosphere.bottom_radius,
 				dot(ground_normal, omega_s));
 			incident_radiance += transmittance_to_ground *
-				ground_albedo * (1.0 / (pi * sr)) * ground_irradiance;
+				ground_albedo * (1.0 / (PI * sr)) * ground_irradiance;
 
 			// The radiance finally scattered from direction omega_i towards direction
 			// -omega is the product of the incident radiance, the scattering
@@ -139,7 +140,6 @@ RadianceSpectrum ComputeMultipleScattering(
 		RadianceSpectrum(0.0, 0.0, 0.0);
 	for (int i = 0; i <= SAMPLE_COUNT; ++i) {
 		Length d_i = Number(i) * dx;
-
 
 		// The r, mu and mu_s parameters at the current integration point (see the
 		// single scattering section for a detailed explanation).

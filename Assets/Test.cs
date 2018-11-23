@@ -108,7 +108,7 @@ namespace Yangrc.AtmosphereScattering {
                     computeShader.SetTexture(densityKernal, "SingleRayleighScatteringLUT", SingleScatteringLUTRayleigh);
                     computeShader.SetTexture(densityKernal, "SingleMieScatteringLUT", SingleScatteringLUTMie);
                     computeShader.SetTexture(densityKernal, "MultipleScatteringLUT", multipleScattering[scatteringOrder - 1]);
-                    computeShader.SetTexture(densityKernal, "IrrdianceLUT", groundIrrdiance[scatteringOrder-1]);
+                    computeShader.SetTexture(densityKernal, "IrradianceLUT", groundIrrdiance[scatteringOrder-1]);
                     computeShader.SetInt("ScatteringOrder", scatteringOrder);
                     computeShader.SetTexture(densityKernal, "MultipleScatteringDensityResult", multipleScatteringDensity);
                     computeShader.Dispatch(densityKernal, scatteringSize.x, scatteringSize.y, scatteringSize.z);
