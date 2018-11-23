@@ -16,7 +16,7 @@ MonoBehaviour:
   atmosphere_sun_angular_radius: 5
   rayleigh_scattering: {x: 4.6, y: 8, z: 12}
   rayleigh_scale_height: 8000
-  mie_extinction: 1
+  mie_extinction: 10
   mie_scale_height: 1200
   absorption_extinction: 0
   absorption_extinction_scale_height: 1000

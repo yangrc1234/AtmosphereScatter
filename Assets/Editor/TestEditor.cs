@@ -14,6 +14,10 @@ namespace Yangrc.AtmosphereScattering {
             if (GUILayout.Button("TestSingleScattering")) {
                 (target as Test).UpdateSingleScattering();
             }
+            if (GUILayout.Button("TestMultipleScattering")) {
+                (target as Test).UpdateMultipleScattering();
+                serializedObject.Update();
+            }
         }
     }
 }

@@ -13,10 +13,13 @@ IrradianceSpectrum GetIrradiance(
 RadianceDensitySpectrum ComputeScatteringDensity(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	uint2 transmittance_size,
 	IN(ReducedScatteringTexture) single_rayleigh_scattering_texture,
 	IN(ReducedScatteringTexture) single_mie_scattering_texture,
 	IN(ScatteringTexture) multiple_scattering_texture,
+	uint3 scattering_size,
 	IN(IrradianceTexture) irradiance_texture,
+	uint2 irradiance_size,
 	Length r, Number mu, Number mu_s, int scattering_order) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
@@ -38,7 +41,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 	const Angle dphi = pi / Number(SAMPLE_COUNT);
 	const Angle dtheta = pi / Number(SAMPLE_COUNT);
 	RadianceDensitySpectrum rayleigh_mie =
-		RadianceDensitySpectrum(0.0 * watt_per_cubic_meter_per_sr_per_nm);
+		RadianceDensitySpectrum(0.0, 0.0, 0.0);
 
 	// Nested loops for the integral over all the incident directions omega_i.
 	for (int l = 0; l < SAMPLE_COUNT; ++l) {
@@ -50,14 +53,14 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 
 		// The distance and transmittance to the ground only depend on theta, so we
 		// can compute them in the outer loop for efficiency.
-		Length distance_to_ground = 0.0 * m;
-		DimensionlessSpectrum transmittance_to_ground = DimensionlessSpectrum(0.0);
-		DimensionlessSpectrum ground_albedo = DimensionlessSpectrum(0.0);
+		Length distance_to_ground = 0.0 ;
+		DimensionlessSpectrum transmittance_to_ground = DimensionlessSpectrum(0.0, 0.0, 0.0);
+		DimensionlessSpectrum ground_albedo = DimensionlessSpectrum(0.0, 0.0, 0.0);
 		if (ray_r_theta_intersects_ground) {
 			distance_to_ground =
 				DistanceToBottomAtmosphereBoundary(atmosphere, r, cos_theta);
 			transmittance_to_ground =
-				GetTransmittance(atmosphere, transmittance_texture, r, cos_theta,
+				GetTransmittance(atmosphere, transmittance_texture, transmittance_size, r, cos_theta,
 					distance_to_ground, true /* ray_intersects_ground */);
 			ground_albedo = atmosphere.ground_albedo;
 		}
@@ -74,7 +77,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 			Number nu1 = dot(omega_s, omega_i);
 			RadianceSpectrum incident_radiance = GetScattering(atmosphere,
 				single_rayleigh_scattering_texture, single_mie_scattering_texture,
-				multiple_scattering_texture, r, omega_i.z, mu_s, nu1,
+				multiple_scattering_texture, scattering_size, r, omega_i.z, mu_s,
 				ray_r_theta_intersects_ground, scattering_order - 1);
 
 			// and of the contribution from the light paths with n-1 bounces and whose
@@ -84,20 +87,21 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 			vec3 ground_normal =
 				normalize(zenith_direction * r + omega_i * distance_to_ground);
 			IrradianceSpectrum ground_irradiance = GetIrradiance(
-				atmosphere, irradiance_texture, atmosphere.bottom_radius,
+				atmosphere, irradiance_texture, irradiance_size, atmosphere.bottom_radius,
 				dot(ground_normal, omega_s));
 			incident_radiance += transmittance_to_ground *
-				ground_albedo * (1.0 / (PI * sr)) * ground_irradiance;
+				ground_albedo * (1.0 / (pi * sr)) * ground_irradiance;
 
 			// The radiance finally scattered from direction omega_i towards direction
 			// -omega is the product of the incident radiance, the scattering
 			// coefficient, and the phase function for directions omega and omega_i
 			// (all this summed over all particle types, i.e. Rayleigh and Mie).
 			Number nu2 = dot(omega, omega_i);
-			Number rayleigh_density = GetProfileDensity(
-				atmosphere.rayleigh_density, r - atmosphere.bottom_radius);
-			Number mie_density = GetProfileDensity(
-				atmosphere.mie_density, r - atmosphere.bottom_radius);
+			Number rayleigh_density = GetScaleHeight(
+				r - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height);
+			Number mie_density = GetScaleHeight(
+				r - atmosphere.bottom_radius, atmosphere.mie_scale_height);
+
 			rayleigh_mie += incident_radiance * (
 				atmosphere.rayleigh_scattering * rayleigh_density *
 				RayleighPhaseFunction(nu2) +
@@ -112,8 +116,10 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 RadianceSpectrum ComputeMultipleScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	uint2 transmittance_size,
 	IN(ScatteringDensityTexture) scattering_density_texture,
-	Length r, Number mu, Number mu_s
+	uint3 scattering_size,
+	Length r, Number mu, Number mu_s,
 	bool ray_r_mu_intersects_ground) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
@@ -130,7 +136,7 @@ RadianceSpectrum ComputeMultipleScattering(
 		Number(SAMPLE_COUNT);
 	// Integration loop.
 	RadianceSpectrum rayleigh_mie_sum =
-		RadianceSpectrum(0.0 * watt_per_square_meter_per_sr_per_nm);
+		RadianceSpectrum(0.0, 0.0, 0.0);
 	for (int i = 0; i <= SAMPLE_COUNT; ++i) {
 		Length d_i = Number(i) * dx;
 
@@ -145,10 +151,10 @@ RadianceSpectrum ComputeMultipleScattering(
 		// The Rayleigh and Mie multiple scattering at the current sample point.
 		RadianceSpectrum rayleigh_mie_i =
 			GetScattering(
-				atmosphere, scattering_density_texture, r_i, mu_i, mu_s_i,
+				atmosphere, scattering_density_texture, scattering_size, r_i, mu_i, mu_s_i,
 				ray_r_mu_intersects_ground) *
 			GetTransmittance(
-				atmosphere, transmittance_texture, r, mu, d_i,
+				atmosphere, transmittance_texture, transmittance_size, r, mu, d_i,
 				ray_r_mu_intersects_ground) *
 			dx;
 		// Sample weight (from the trapezoidal rule).
@@ -161,36 +167,41 @@ RadianceSpectrum ComputeMultipleScattering(
 RadianceDensitySpectrum ComputeScatteringDensityTexture(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	uint2 transmittance_size,
 	IN(ReducedScatteringTexture) single_rayleigh_scattering_texture,
 	IN(ReducedScatteringTexture) single_mie_scattering_texture,
 	IN(ScatteringTexture) multiple_scattering_texture,
+	uint3 scattering_size,
 	IN(IrradianceTexture) irradiance_texture,
+	uint2 irradiance_size,
 	IN(vec3) frag_coord, int scattering_order) {
 	Length r;
 	Number mu;
 	Number mu_s;
 	bool ray_r_mu_intersects_ground;
-	GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, frag_coord,
-		r, mu, mu_s, ray_r_mu_intersects_ground);
-	return ComputeScatteringDensity(atmosphere, transmittance_texture,
+	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, frag_coord,
+		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	return ComputeScatteringDensity(atmosphere, transmittance_texture, transmittance_size,
 		single_rayleigh_scattering_texture, single_mie_scattering_texture,
-		multiple_scattering_texture, irradiance_texture, r, mu, mu_s, 
+		multiple_scattering_texture, scattering_size, irradiance_texture, irradiance_size, r, mu, mu_s, 
 		scattering_order);
 }
 
 RadianceSpectrum ComputeMultipleScatteringTexture(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
+	uint2 transmittance_size,
 	IN(ScatteringDensityTexture) scattering_density_texture,
-	IN(vec3) frag_coord, uint WIDTH, uint HEIGHT, uint DEPTH) {
+	uint3 scattering_size,
+	IN(vec3) frag_coord) {
 	Length r;
 	Number mu;
 	Number mu_s;
 	bool ray_r_mu_intersects_ground;
-	GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, frag_coord,
-		r, mu, mu_s, ray_r_mu_intersects_ground, WIDTH, HEIGHT, DEPTH);
-	return ComputeMultipleScattering(atmosphere, transmittance_texture,
-		scattering_density_texture, r, mu, mu_s, 
+	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, frag_coord,
+		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	return ComputeMultipleScattering(atmosphere, transmittance_texture, transmittance_size,
+		scattering_density_texture, scattering_size, r, mu, mu_s,
 		ray_r_mu_intersects_ground);
 }
 #endif

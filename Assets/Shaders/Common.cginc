@@ -3,12 +3,18 @@
 
 #define Number float
 #define Length float
+#define Angle float
 #define Area float
+#define SolidAngle float
+#define sr 1.0
 #define DimensionlessSpectrum float3
 #define IrradianceSpectrum float3
 #define RadianceSpectrum float3
+#define RadianceDensitySpectrum float3
 #define TransmittanceTexture sampler2D
+#define IrradianceTexture sampler2D
 #define ScatteringTexture sampler3D
+#define ScatteringDensityTexture sampler3D
 #define ReducedScatteringTexture sampler3D
 #define InverseSolidAngle float
 #define vec2 float2
@@ -18,16 +24,17 @@
 #define OUT(x) out x
 #define assert(x) ;
 
-#define PI 3.1415926
-#define rad (360.0 / (2 * PI))
+#define pi 3.1415926
+#define rad (360.0 / (2 * pi))
 
 struct AtmosphereParameters {
 	Length top_radius;
 	Length bottom_radius;
 	Number sun_angular_radius;
 	DimensionlessSpectrum rayleigh_scattering;
+	IrradianceSpectrum ground_albedo;
 	Number rayleigh_scale_height;
-	Number mie_extinction;
+	Number mie_scattering;
 	Number mie_scale_height;
 	Number absorption_extinction;
 	Number absorption_extinction_scale_height;
@@ -42,7 +49,7 @@ AtmosphereParameters GetAtmosphereStruct(
 	float atmosphere_sun_angular_radius,
 	DimensionlessSpectrum rayleigh_scattering,
 	Number rayleigh_scale_height,
-	Number mie_extinction,
+	Number mie_scattering,
 	Number mie_scale_height,
 	Number absorption_extinction,
 	Number absorption_extinction_scale_height
@@ -55,7 +62,7 @@ AtmosphereParameters GetAtmosphereStruct(
 
 	result.rayleigh_scattering = rayleigh_scattering;
 	result.rayleigh_scale_height = rayleigh_scale_height;
-	result.mie_extinction = mie_extinction;
+	result.mie_scattering = mie_scattering;
 	result.mie_scale_height = mie_scale_height;
 	result.absorption_extinction = absorption_extinction;
 	result.absorption_extinction_scale_height = absorption_extinction_scale_height;
@@ -63,6 +70,7 @@ AtmosphereParameters GetAtmosphereStruct(
 	result.solar_irradiance = 1.0f;
 	result.mu_s_min = -0.3;
 	result.mie_phase_function_g = 0.95;
+	result.ground_albedo = float3(0.6, 0.5, 0.5);
 	return result;
 }
 

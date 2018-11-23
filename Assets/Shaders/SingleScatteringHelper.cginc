@@ -32,13 +32,13 @@ void ComputeSingleScatteringIntegrand(
 }
 
 InverseSolidAngle RayleighPhaseFunction(Number nu) {
-	InverseSolidAngle k = 3.0 / (16.0 * PI);
+	InverseSolidAngle k = 3.0 / (16.0 * pi);
 	return k * (1.0 + nu * nu);
 }
 
 InverseSolidAngle MiePhaseFunction(Number g, Number nu) {
-	InverseSolidAngle k = 3.0 / (8.0 * PI ) * (1.0 - g * g) / (2.0 + g * g);
-	return k * (1.0 + nu * nu) / pow(1.0 + g * g - 2.0 * g * nu, 1.5);
+	InverseSolidAngle k = 3.0 / (8.0 * pi) * (1.0 - g * g) / (2.0 + g * g);
+	return k * (1.0 + nu * nu) / pow(abs(1.0 + g * g - 2.0 * g * nu), 1.5);
 }
 
 void ComputeSingleScattering(
@@ -76,7 +76,7 @@ void ComputeSingleScattering(
 	//Phase function terms are not added yet. See GetScattering.(And also, we need to store rayleigh and mie seprately, since they use different phase functions.)
 	rayleigh = rayleigh_sum * dx * atmosphere.solar_irradiance *
 		atmosphere.rayleigh_scattering;
-	mie = mie_sum * dx * atmosphere.solar_irradiance * atmosphere.mie_extinction;
+	mie = mie_sum * dx * atmosphere.solar_irradiance * atmosphere.mie_scattering;
 }
 
 vec3 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
@@ -214,7 +214,7 @@ RadianceSpectrum GetScattering(
 	) {
 	vec3 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
 		atmosphere, r, mu, mu_s, texture_size, ray_r_mu_intersects_ground);
-	return tex3D(scattering_texture, uvwz).rgb;
+	return tex3Dlod(scattering_texture, float4(uvwz, 0.0)).rgb;
 }
 
 RadianceSpectrum GetScattering(
