@@ -8,12 +8,12 @@ namespace Yangrc.AtmosphereScattering {
         public RenderTexture TransmittanceLUT;
         public RenderTexture SingleScatteringLUTRayleigh;
         public RenderTexture SingleScatteringLUTMie;
-        public RenderTexture MultipleScatteringDensityLUT;
         public RenderTexture MultipleScatteringLUT;
         public RenderTexture IrradianceLUT;
         public AtmosphereConfig config;
         public Material volumePreview;
         public Material volumePreview2;
+        public Material skyboxMaterial;
 
         public Vector2Int transmittanceSize = new Vector2Int(512, 512);
         public Vector3Int scatteringSize = new Vector3Int(32, 32, 128);
@@ -66,19 +66,15 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.Dispatch(kernal, scatteringSize.x, scatteringSize.y, scatteringSize.z);
             volumePreview.SetTexture("_MainTex", SingleScatteringLUTMie);
         }
-        public RenderTexture[] groundIrrdiance;
-        public RenderTexture[] multipleScattering;
+        public RenderTexture[] groundIrrdiance = new RenderTexture[10];
+        public RenderTexture[] multipleScattering = new RenderTexture[10];
         public RenderTexture multipleScatteringDensity;
 
         [Range(2, 5)]
         public uint MultipleScatteringIterations = 3;
         public void UpdateMultipleScattering() {
             updateParams();
-
-            groundIrrdiance = new RenderTexture[MultipleScatteringIterations + 1];
-            multipleScattering = new RenderTexture[MultipleScatteringIterations + 1];
-            multipleScatteringDensity = null;
-
+             
             //Create tons of rt to store intermediate results.
             for (int i = 0; i <= MultipleScatteringIterations; i++) {
                 this.CreateLUT(ref groundIrrdiance[i], "Ground Irrdiance Order " + i, irradianceSize.x, irradianceSize.y, 0 , RenderTextureFormat.ARGBFloat);
@@ -112,7 +108,6 @@ namespace Yangrc.AtmosphereScattering {
                     computeShader.SetInt("ScatteringOrder", scatteringOrder);
                     computeShader.SetTexture(densityKernal, "MultipleScatteringDensityResult", multipleScatteringDensity);
                     computeShader.Dispatch(densityKernal, scatteringSize.x, scatteringSize.y, scatteringSize.z);
-                    volumePreview.SetTexture("_MainTex", multipleScatteringDensity);
 
                     //Multiple scattering.
                     computeShader.SetTexture(scatteringKernal, "TransmittanceLUT", TransmittanceLUT);
@@ -129,6 +124,35 @@ namespace Yangrc.AtmosphereScattering {
                 computeShader.SetTexture(groundIndirectKernal, "GroundIndirectIrradianceResult", groundIrrdiance[scatteringOrder]);
                 computeShader.Dispatch(groundIndirectKernal, irradianceSize.x, irradianceSize.y, 1);
             }
+
+            //Combine.
+            this.CreateLUT(ref MultipleScatteringLUT, "Multiple Scattering Combined Final", scatteringSize.x, scatteringSize.y, scatteringSize.z, RenderTextureFormat.ARGBFloat);
+            this.CreateLUT(ref IrradianceLUT, "Irradiance Combined Final", irradianceSize.x, irradianceSize.y, 0, RenderTextureFormat.ARGBFloat);
+
+            var combineGroundKernal = computeShader.FindKernel("CombineGroundIrradianceLUT");
+            var combineScatterKernal = computeShader.FindKernel("CombineMultipleScatteringLUT");
+
+            for (int i = 0; i <= MultipleScatteringIterations; i++) {
+                computeShader.SetTexture(combineGroundKernal, "GroundIrradianceSumTarget", IrradianceLUT);
+                computeShader.SetTexture(combineGroundKernal, "GroundIrradianceSumAdder", groundIrrdiance[i]);
+                computeShader.Dispatch(combineGroundKernal, irradianceSize.x, irradianceSize.y, 1);
+
+                if (i > 1) {
+                    computeShader.SetTexture(combineScatterKernal, "ScatteringSumTarget", MultipleScatteringLUT);
+                    computeShader.SetTexture(combineScatterKernal, "ScatteringSumAdd", multipleScattering[i]);
+                    computeShader.Dispatch(combineScatterKernal, scatteringSize.x, scatteringSize.y, scatteringSize.z);
+                }
+            }
+            volumePreview.SetTexture("_MainTex", MultipleScatteringLUT);
+
+            SetupSkyboxMaterial();
+        }
+
+        private void SetupSkyboxMaterial() {
+            skyboxMaterial.SetTexture("_SingleRayleigh", SingleScatteringLUTRayleigh);
+            skyboxMaterial.SetTexture("_SingleMie", SingleScatteringLUTMie);
+            skyboxMaterial.SetTexture("_MultipleScattering", MultipleScatteringLUT);
+            config.Apply(skyboxMaterial);
         }
     }
 }

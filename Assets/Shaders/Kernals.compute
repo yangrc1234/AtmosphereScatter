@@ -9,39 +9,14 @@ Helper functions. See https://ebruneton.github.io/precomputed_atmospheric_scatte
 #include "MultipleScatteringHelper.cginc"
 #include "GroundHelper.cginc"
 
-/*
-Pass in variables.
-*/
-float atmosphere_top_radius;
-float atmosphere_bot_radius;
-float atmosphere_sun_angular_radius;
-float3 rayleigh_scattering;
-float rayleigh_scale_height;
-float mie_extinction;
-float mie_scale_height;
-float absorption_extinction;
-float absorption_extinction_scale_height;
-
-AtmosphereParameters GetAtmParameters() {
-	return GetAtmosphereStruct(
-		atmosphere_top_radius,
-		atmosphere_bot_radius,
-		atmosphere_sun_angular_radius,
-		rayleigh_scattering,
-		rayleigh_scale_height,
-		mie_extinction,
-		mie_scale_height,
-		absorption_extinction,
-		absorption_extinction_scale_height
-	);
-}
-
 #pragma kernel CalculateTransmittanceLUT
 #pragma kernel CalculateSingleScatteringLUT
 #pragma kernel CalculateMultipleScatteringDensityLUT
 #pragma kernel CalculateMultipleScatteringLUT
 #pragma kernel CalculateGroundDirectIrradianceLUT
 #pragma kernel CalculateGroundIndirectIrradianceLUT
+#pragma kernel CombineGroundIrradianceLUT
+#pragma kernel CombineMultipleScatteringLUT
 /*
 Common parameters.
 */
@@ -246,6 +221,33 @@ void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
 		uvw, ScatteringOrder, uint2(w,h));
 
 	GroundIndirectIrradianceResult[id.xy] = irradiance;
+}
 
 
+/*
+==========================================
+||		Ground Irradiance Combine		||
+==========================================
+*/
+
+RWTexture2D<float3> GroundIrradianceSumTarget;
+RWTexture2D<float3> GroundIrradianceSumAdder;
+
+[numthreads(1, 1, 1)]
+void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID) {
+	GroundIrradianceSumTarget[id.xy] += GroundIrradianceSumAdder[id.xy];
+}
+
+/*
+==========================================
+||		Scattering	Combine				||
+==========================================
+*/
+
+RWTexture3D<float4> ScatteringSumTarget;
+RWTexture3D<float4> ScatteringSumAdd;
+
+[numthreads(1, 1, 1)]
+void CombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
+	ScatteringSumTarget[id.xyz] += ScatteringSumAdd[id.xyz];
 }

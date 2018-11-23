@@ -3,6 +3,7 @@
 
 #include "Common.cginc"
 #include "TransmittanceHelper.cginc"
+#include "MultipleScatteringHelper.cginc"
 
 IrradianceSpectrum ComputeDirectIrradiance(
 	IN(AtmosphereParameters) atmosphere,

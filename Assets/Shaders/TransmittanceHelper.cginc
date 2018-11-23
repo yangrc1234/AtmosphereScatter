@@ -102,7 +102,7 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
 		atmosphere.rayleigh_scattering *
 		ComputeOpticalLengthToTopAtmosphereBoundary(
 			atmosphere, r, mu, atmosphere.rayleigh_scale_height) +
-		atmosphere.mie_scattering *
+		atmosphere.mie_extinction *
 		ComputeOpticalLengthToTopAtmosphereBoundary(
 			atmosphere, r, mu, atmosphere.mie_scale_height) +
 		atmosphere.absorption_extinction *
@@ -110,11 +110,6 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
 			atmosphere, r, mu, atmosphere.absorption_extinction_scale_height)
 		)
 	);
-	//return exp(-(
-	//	atmosphere.rayleigh_scattering *
-	//	ComputeOpticalLengthToTopAtmosphereBoundary(
-	//		atmosphere, r, mu, atmosphere.rayleigh_scale_height)
-	//));
 }
 
 DimensionlessSpectrum GetTransmittance(

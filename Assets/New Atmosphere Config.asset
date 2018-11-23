@@ -13,10 +13,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   atmosphere_top_radius: 63660000
   atmosphere_bot_radius: 63600000
-  atmosphere_sun_angular_radius: 5
-  rayleigh_scattering: {x: 4.6, y: 8, z: 12}
+  atmosphere_sun_angular_radius: 0.03
+  rayleigh_scattering: {x: 5.8, y: 13.5, z: 33.1}
   rayleigh_scale_height: 8000
-  mie_extinction: 10
+  mie_extinction: 20
+  mie_scattering: 20
   mie_scale_height: 1200
   absorption_extinction: 0
   absorption_extinction_scale_height: 1000

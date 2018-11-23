@@ -2,12 +2,12 @@
 #define __MULTIPLE_SCATTERING_HELPER__
 
 #include "Common.cginc"
-#include "TransmittanceHelper.cginc"
-#include "GroundHelper.cginc"
+#include "TransmittanceHelper.cginc" 
+#include "SingleScatteringHelper.cginc"
 
 IrradianceSpectrum GetIrradiance(
 	IN(AtmosphereParameters) atmosphere,
-	IN(IrradianceTexture) irradiance_texture,
+	IN(IrradianceTexture) irradiance_texture, uint2 irradiance_size,
 	Length r, Number mu_s);
 
 RadianceDensitySpectrum ComputeScatteringDensity(

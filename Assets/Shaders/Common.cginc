@@ -95,6 +95,7 @@ struct AtmosphereParameters {
 	IrradianceSpectrum ground_albedo;
 	Number rayleigh_scale_height;
 	Number mie_scattering;
+	Number mie_extinction;
 	Number mie_scale_height;
 	Number absorption_extinction;
 	Number absorption_extinction_scale_height;
@@ -110,6 +111,7 @@ AtmosphereParameters GetAtmosphereStruct(
 	DimensionlessSpectrum rayleigh_scattering,
 	Number rayleigh_scale_height,
 	Number mie_scattering,
+	Number mie_extinction,
 	Number mie_scale_height,
 	Number absorption_extinction,
 	Number absorption_extinction_scale_height
@@ -123,13 +125,14 @@ AtmosphereParameters GetAtmosphereStruct(
 	result.rayleigh_scattering = rayleigh_scattering;
 	result.rayleigh_scale_height = rayleigh_scale_height;
 	result.mie_scattering = mie_scattering;
+	result.mie_extinction = mie_extinction;
 	result.mie_scale_height = mie_scale_height;
 	result.absorption_extinction = absorption_extinction;
 	result.absorption_extinction_scale_height = absorption_extinction_scale_height;
 
 	result.solar_irradiance = 1.0f;
 	result.mu_s_min = -0.3;
-	result.mie_phase_function_g = 0.95;
+	result.mie_phase_function_g = 0.8;
 	result.ground_albedo = float3(0.6, 0.5, 0.5);
 	return result;
 }
@@ -198,4 +201,36 @@ Length DistanceToNearestAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,
 		return DistanceToTopAtmosphereBoundary(atmosphere, r, mu);
 	}
 }
+
+
+
+/*
+Pass in variables.
+*/
+float atmosphere_top_radius;
+float atmosphere_bot_radius;
+float atmosphere_sun_angular_radius;
+float3 rayleigh_scattering;
+float rayleigh_scale_height;
+float mie_scattering;
+float mie_extinction;
+float mie_scale_height;
+float absorption_extinction;
+float absorption_extinction_scale_height;
+
+AtmosphereParameters GetAtmParameters() {
+	return GetAtmosphereStruct(
+		atmosphere_top_radius,
+		atmosphere_bot_radius,
+		atmosphere_sun_angular_radius,
+		rayleigh_scattering,
+		rayleigh_scale_height,
+		mie_scattering,
+		mie_extinction,
+		mie_scale_height,
+		absorption_extinction,
+		absorption_extinction_scale_height
+	);
+}
+
 #endif 
