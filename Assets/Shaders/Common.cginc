@@ -131,7 +131,7 @@ AtmosphereParameters GetAtmosphereStruct(
 	result.absorption_extinction_scale_height = absorption_extinction_scale_height;
 
 	result.solar_irradiance = 1.0f;
-	result.mu_s_min = -0.3;
+	result.mu_s_min = -0.2f;
 	result.mie_phase_function_g = 0.8;
 	result.ground_albedo = float3(0.6, 0.5, 0.5);
 	return result;

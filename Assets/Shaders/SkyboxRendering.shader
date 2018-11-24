@@ -48,7 +48,10 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 			sampler3D _SingleRayleigh;
 			sampler3D _SingleMie;
 			sampler3D _MultipleScattering;
+			sampler2D _Transmittance;
 			float3 _ScatteringSize;
+			float2 _TransmittanceSize;
+			float _LightScale;
 
 			RadianceSpectrum GetScattering(
 				IN(AtmosphereParameters) atmosphere,
@@ -57,7 +60,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
 			);
 
-			fixed4 frag (v2f i) : SV_Target
+			half4 frag (v2f i) : SV_Target
 			{
 				i.worldPos /= i.worldPos.w;
 				float3 viewDir = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
@@ -69,8 +72,18 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 
 				float mu = dot(viewDir, float3(0.0f, 1.0f, 0.0f));
 				float mu_s = dot(float3(0.0f, 1.0f, 0.0f), lightDir);
+				float transmittance = GetTransmittanceToTopAtmosphereBoundary(atm, _Transmittance, _TransmittanceSize, r, mu);
 
 				float nu = dot(viewDir, lightDir);
+				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
+
+				float direct_sun_strength = 0.0f;
+				{
+					float cos_sunedge = cos(atm.sun_angular_radius / pi);
+					if (nu > cos_sunedge) {
+						direct_sun_strength = transmittance * (nu - cos_sunedge) / (1.0f - cos_sunedge);
+					}
+				}
 
 				float3 scattering_size = _ScatteringSize;
 
@@ -97,7 +110,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						r, mu, mu_s,
 						false);
 
-				return float4(_LightColor0 * (rayleigh + mie + multiple), 0.0f);
+				return float4(_LightScale * _LightColor0 * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
 			}
 			ENDCG
 		}

@@ -11,10 +11,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a909801085fa7db47939f4858f8f7a1f, type: 3}
   m_Name: New Atmosphere Config
   m_EditorClassIdentifier: 
-  AtmosphereDensity: 0.2
+  AtmosphereDensity: 1
+  LightingScale: 6.283185
   atmosphere_top_radius: 63660000
   atmosphere_bot_radius: 63600000
-  atmosphere_sun_angular_radius: 0.01
+  atmosphere_sun_angular_radius: 0.08
   rayleigh_scattering: {x: 5.8, y: 13.5, z: 33.1}
   rayleigh_scale_height: 8000
   mie_extinction: 2

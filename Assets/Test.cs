@@ -19,7 +19,6 @@ namespace Yangrc.AtmosphereScattering {
         public Vector3Int scatteringSize = new Vector3Int(32, 32, 128);
         public Vector2Int irradianceSize = new Vector2Int(32, 32);
 
-
         private void CreateLUT(ref RenderTexture result, string name, int width, int height, int zsize, RenderTextureFormat format) {
             if (result != null)
                 result.Release();
@@ -32,6 +31,8 @@ namespace Yangrc.AtmosphereScattering {
             } else {
                 result.dimension = UnityEngine.Rendering.TextureDimension.Tex2D;
             }
+            result.filterMode = FilterMode.Bilinear;
+            result.wrapMode = TextureWrapMode.Clamp;
             result.Create();
         }
 
@@ -152,7 +153,9 @@ namespace Yangrc.AtmosphereScattering {
             skyboxMaterial.SetTexture("_SingleRayleigh", SingleScatteringLUTRayleigh);
             skyboxMaterial.SetTexture("_SingleMie", SingleScatteringLUTMie);
             skyboxMaterial.SetTexture("_MultipleScattering", MultipleScatteringLUT);
+            skyboxMaterial.SetTexture("_Transmittance", TransmittanceLUT);
             skyboxMaterial.SetVector("_ScatteringSize", (Vector3)scatteringSize);
+            skyboxMaterial.SetVector("_TransmittanceSize", (Vector2)transmittanceSize);
             config.Apply(skyboxMaterial);
         }
     }

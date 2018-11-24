@@ -17,6 +17,8 @@ namespace Yangrc.AtmosphereScattering {
             public static int mie_scale_height = Shader.PropertyToID("mie_scale_height");
             public static int absorption_extinction = Shader.PropertyToID("absorption_extinction");
             public static int absorption_extinction_scale_height = Shader.PropertyToID("absorption_extinction_scale_height");
+
+            public static int lightingScale = Shader.PropertyToID("_LightScale");
         }
 
         public void Apply(Material mat) {
@@ -30,6 +32,9 @@ namespace Yangrc.AtmosphereScattering {
             mat.SetFloat(Keys.mie_scale_height, mie_scale_height);
             mat.SetFloat(Keys.absorption_extinction, AtmosphereDensity * absorption_extinction);
             mat.SetFloat(Keys.absorption_extinction_scale_height, absorption_extinction_scale_height);
+
+            mat.SetFloat(Keys.lightingScale, LightingScale);
+
         }
 
         public void Apply(ComputeShader shader) {
@@ -46,6 +51,7 @@ namespace Yangrc.AtmosphereScattering {
         }
 
         public float AtmosphereDensity = 1.0f;
+        public float LightingScale = 2.0f * 3.1415926f;
         public float atmosphere_top_radius = 6.36e7f + 6e4f;
         public float atmosphere_bot_radius = 6.36e7f;
         public float atmosphere_sun_angular_radius = 5.0f;
