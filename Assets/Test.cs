@@ -152,6 +152,7 @@ namespace Yangrc.AtmosphereScattering {
             skyboxMaterial.SetTexture("_SingleRayleigh", SingleScatteringLUTRayleigh);
             skyboxMaterial.SetTexture("_SingleMie", SingleScatteringLUTMie);
             skyboxMaterial.SetTexture("_MultipleScattering", MultipleScatteringLUT);
+            skyboxMaterial.SetVector("_ScatteringSize", (Vector3)scatteringSize);
             config.Apply(skyboxMaterial);
         }
     }

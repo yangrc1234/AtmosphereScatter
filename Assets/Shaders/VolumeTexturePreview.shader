@@ -50,7 +50,7 @@
 			{
 				// sample the texture
 				fixed4 col = tex3D(_MainTex, i.worldPos / i.worldPos.w);
-				return col + 0.2f;
+				return col;
 			}
 			ENDCG
 		}

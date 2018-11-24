@@ -17,19 +17,18 @@ namespace Yangrc.AtmosphereScattering {
             public static int mie_scale_height = Shader.PropertyToID("mie_scale_height");
             public static int absorption_extinction = Shader.PropertyToID("absorption_extinction");
             public static int absorption_extinction_scale_height = Shader.PropertyToID("absorption_extinction_scale_height");
-
         }
 
         public void Apply(Material mat) {
             mat.SetFloat(Keys.atmosphere_top_radius, atmosphere_top_radius);
             mat.SetFloat(Keys.atmosphere_bot_radius, atmosphere_bot_radius);
             mat.SetFloat(Keys.atmosphere_sun_angular_radius, atmosphere_sun_angular_radius);
-            mat.SetVector(Keys.rayleigh_scattering, rayleigh_scattering * 1e-6f);
+            mat.SetVector(Keys.rayleigh_scattering, AtmosphereDensity  * rayleigh_scattering * 1e-6f);
             mat.SetFloat(Keys.rayleigh_scale_height, rayleigh_scale_height);
-            mat.SetFloat(Keys.mie_scattering, mie_scattering * 1e-6f);
-            mat.SetFloat(Keys.mie_extinction, mie_extinction * 1e-6f);
+            mat.SetFloat(Keys.mie_scattering, AtmosphereDensity  * mie_scattering * 1e-6f);
+            mat.SetFloat(Keys.mie_extinction, AtmosphereDensity  * mie_extinction * 1e-6f);
             mat.SetFloat(Keys.mie_scale_height, mie_scale_height);
-            mat.SetFloat(Keys.absorption_extinction, absorption_extinction);
+            mat.SetFloat(Keys.absorption_extinction, AtmosphereDensity * absorption_extinction);
             mat.SetFloat(Keys.absorption_extinction_scale_height, absorption_extinction_scale_height);
         }
 
@@ -37,15 +36,16 @@ namespace Yangrc.AtmosphereScattering {
             shader.SetFloat(Keys.atmosphere_top_radius, atmosphere_top_radius);
             shader.SetFloat(Keys.atmosphere_bot_radius, atmosphere_bot_radius);
             shader.SetFloat(Keys.atmosphere_sun_angular_radius, atmosphere_sun_angular_radius);
-            shader.SetVector(Keys.rayleigh_scattering, rayleigh_scattering * 1e-6f);
+            shader.SetVector(Keys.rayleigh_scattering, AtmosphereDensity  * rayleigh_scattering * 1e-6f);
             shader.SetFloat(Keys.rayleigh_scale_height, rayleigh_scale_height);
-            shader.SetFloat(Keys.mie_scattering, mie_scattering * 1e-6f);
-            shader.SetFloat(Keys.mie_extinction, mie_extinction * 1e-6f);
+            shader.SetFloat(Keys.mie_scattering, AtmosphereDensity  * mie_scattering * 1e-6f);
+            shader.SetFloat(Keys.mie_extinction, AtmosphereDensity  * mie_extinction * 1e-6f);
             shader.SetFloat(Keys.mie_scale_height, mie_scale_height);
-            shader.SetFloat(Keys.absorption_extinction, absorption_extinction);
+            shader.SetFloat(Keys.absorption_extinction, AtmosphereDensity * absorption_extinction);
             shader.SetFloat(Keys.absorption_extinction_scale_height, absorption_extinction_scale_height);
         }
 
+        public float AtmosphereDensity = 1.0f;
         public float atmosphere_top_radius = 6.36e7f + 6e4f;
         public float atmosphere_bot_radius = 6.36e7f;
         public float atmosphere_sun_angular_radius = 5.0f;

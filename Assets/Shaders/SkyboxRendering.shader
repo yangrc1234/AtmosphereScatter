@@ -48,31 +48,31 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 			sampler3D _SingleRayleigh;
 			sampler3D _SingleMie;
 			sampler3D _MultipleScattering;
-			float4 _MultipleScattering_TexelSize;
+			float3 _ScatteringSize;
 
 			RadianceSpectrum GetScattering(
 				IN(AtmosphereParameters) atmosphere,
 				IN(ScatteringTexture) scattering_texture,
 				uint3 texture_size,
 				Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
-
 			);
 
 			fixed4 frag (v2f i) : SV_Target
 			{
 				i.worldPos /= i.worldPos.w;
 				float3 viewDir = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
+				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
 				AtmosphereParameters atm = GetAtmParameters();
 
-				float r = length(i.worldPos + float3(0, atm.bottom_radius, 0));
+				float r = length(_WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0));
 
 				float mu = dot(viewDir, float3(0.0f, 1.0f, 0.0f));
-				float mu_s = dot(float3(0.0f, 1.0f, 0.0f), _WorldSpaceLightPos0.xyz);
+				float mu_s = dot(float3(0.0f, 1.0f, 0.0f), lightDir);
 
-				float nu = dot(viewDir, _WorldSpaceLightPos0.xyz);
+				float nu = dot(viewDir, lightDir);
 
-				float3 scattering_size = 1.0f / _MultipleScattering_TexelSize.xyz;
+				float3 scattering_size = _ScatteringSize;
 
 				float3 rayleigh =
 					GetScattering(atm,
@@ -97,7 +97,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						r, mu, mu_s,
 						false);
 
-				return float4(_LightColor0 * (rayleigh + mie ), 0.0f);
+				return float4(_LightColor0 * (rayleigh + mie + multiple), 0.0f);
 			}
 			ENDCG
 		}
