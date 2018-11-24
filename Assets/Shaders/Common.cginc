@@ -97,7 +97,7 @@ struct AtmosphereParameters {
 	Number mie_scattering;
 	Number mie_extinction;
 	Number mie_scale_height;
-	Number absorption_extinction;
+	DimensionlessSpectrum absorption_extinction;
 	Number absorption_extinction_scale_height;
 	Number solar_irradiance;
 	Number mu_s_min;
@@ -113,7 +113,8 @@ AtmosphereParameters GetAtmosphereStruct(
 	Number mie_scattering,
 	Number mie_extinction,
 	Number mie_scale_height,
-	Number absorption_extinction,
+	Number mie_phase_function_g,
+	DimensionlessSpectrum absorption_extinction,
 	Number absorption_extinction_scale_height
 ) {
 	AtmosphereParameters result;
@@ -127,12 +128,12 @@ AtmosphereParameters GetAtmosphereStruct(
 	result.mie_scattering = mie_scattering;
 	result.mie_extinction = mie_extinction;
 	result.mie_scale_height = mie_scale_height;
+	result.mie_phase_function_g = mie_phase_function_g;
 	result.absorption_extinction = absorption_extinction;
 	result.absorption_extinction_scale_height = absorption_extinction_scale_height;
 
 	result.solar_irradiance = 1.0f;
 	result.mu_s_min = -0.2f;
-	result.mie_phase_function_g = 0.8;
 	result.ground_albedo = float3(0.6, 0.5, 0.5);
 	return result;
 }
@@ -215,7 +216,8 @@ float rayleigh_scale_height;
 float mie_scattering;
 float mie_extinction;
 float mie_scale_height;
-float absorption_extinction;
+float mie_phase_function_g;
+float3 absorption_extinction;
 float absorption_extinction_scale_height;
 
 AtmosphereParameters GetAtmParameters() {
@@ -228,9 +230,25 @@ AtmosphereParameters GetAtmParameters() {
 		mie_scattering,
 		mie_extinction,
 		mie_scale_height,
+		mie_phase_function_g,
 		absorption_extinction,
 		absorption_extinction_scale_height
 	);
+}
+
+InverseSolidAngle RayleighPhaseFunction(Number nu) {
+	InverseSolidAngle k = 3.0 / (16.0 * PI);
+	return k * (1.0 + nu * nu);
+	//return 0.8f * (1.4f + 0.5f * nu) / (4.0 * PI);
+}
+
+InverseSolidAngle AdhocRayleighPhaseFunction(Number nu) {
+	return 0.8f * (1.4f + 0.5f * nu) / (4.0 * PI);
+}
+
+InverseSolidAngle MiePhaseFunction(Number g, Number nu) {
+	InverseSolidAngle k = 3.0 / (8.0 * PI) * (1.0 - g * g) / (2.0 + g * g);
+	return k * (1.0 + nu * nu) / pow(abs(1.0 + g * g - 2.0 * g * nu), 1.5);
 }
 
 #endif 

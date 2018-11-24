@@ -15,11 +15,11 @@ MonoBehaviour:
   LightingScale: 6.283185
   atmosphere_top_radius: 63660000
   atmosphere_bot_radius: 63600000
-  atmosphere_sun_angular_radius: 0.08
-  rayleigh_scattering: {x: 5.8, y: 13.5, z: 33.1}
+  atmosphere_sun_angular_radius: 0.025
+  rayleigh_scattering: 1
   rayleigh_scale_height: 8000
-  mie_extinction: 2
-  mie_scattering: 2
+  mie_scattering: 1
   mie_scale_height: 1200
-  absorption_extinction: 0
+  mie_phase_function_g: 0.85
+  absorption_extinction: 1
   absorption_extinction_scale_height: 1000

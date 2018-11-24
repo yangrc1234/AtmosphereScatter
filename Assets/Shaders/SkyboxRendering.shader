@@ -65,21 +65,19 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				i.worldPos /= i.worldPos.w;
 				float3 viewDir = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
-
 				AtmosphereParameters atm = GetAtmParameters();
 
 				float r = length(_WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0));
-
 				float mu = dot(viewDir, float3(0.0f, 1.0f, 0.0f));
 				float mu_s = dot(float3(0.0f, 1.0f, 0.0f), lightDir);
-				float transmittance = GetTransmittanceToTopAtmosphereBoundary(atm, _Transmittance, _TransmittanceSize, r, mu);
+				float3 transmittance = GetTransmittanceToTopAtmosphereBoundary(atm, _Transmittance, _TransmittanceSize, r, mu);
 
 				float nu = dot(viewDir, lightDir);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
-				float direct_sun_strength = 0.0f;
+				float3 direct_sun_strength = 0.0f;
 				{
-					float cos_sunedge = cos(atm.sun_angular_radius / pi);
+					float cos_sunedge = cos(atm.sun_angular_radius);
 					if (nu > cos_sunedge) {
 						direct_sun_strength = transmittance * (nu - cos_sunedge) / (1.0f - cos_sunedge);
 					}
@@ -93,7 +91,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						scattering_size,
 						r, mu, mu_s,
 						false) *
-					RayleighPhaseFunction(nu);
+					AdhocRayleighPhaseFunction(nu);
 
 				float3 mie = 
 					GetScattering(atm,

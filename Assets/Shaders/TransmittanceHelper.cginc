@@ -124,21 +124,22 @@ DimensionlessSpectrum GetTransmittance(
 	Length r_d = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
 	Number mu_d = ClampCosine((r * mu + d) / r_d);
 
+
 	if (ray_r_mu_intersects_ground) {
-		return min(
-			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, texture_size, r_d, -mu_d) /
-			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, texture_size, r, -mu),
-			DimensionlessSpectrum(1.0, 1.0, 1.0));
+		float3 tAC = GetTransmittanceToTopAtmosphereBoundary(
+			atmosphere, transmittance_texture, texture_size, r_d, -mu_d);
+		float3 tAB = GetTransmittanceToTopAtmosphereBoundary(
+			atmosphere, transmittance_texture, texture_size, r, -mu);
+		float3 tBC = tAB == 0.0f ? 0.0f : tAC / tAB;
+		return min(tBC, float3(1.0f, 1.0f, 1.0f));
 	}
-	else {
-		return min(
-			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, texture_size, r, mu) /
-			GetTransmittanceToTopAtmosphereBoundary(
-				atmosphere, transmittance_texture, texture_size, r_d, mu_d),
-			DimensionlessSpectrum(1.0, 1.0, 1.0));
+	else { 
+		float3 tAC = GetTransmittanceToTopAtmosphereBoundary(
+			atmosphere, transmittance_texture, texture_size, r, mu);
+		float3 tAB = GetTransmittanceToTopAtmosphereBoundary(
+			atmosphere, transmittance_texture, texture_size, r_d, mu_d);
+		float3 tBC = tAB == 0.0f ? 0.0f : tAC / tAB;
+		return min(tBC, float3(1.0f, 1.0f, 1.0f));
 	}
 }
 #endif
