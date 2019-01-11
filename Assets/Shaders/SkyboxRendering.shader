@@ -11,8 +11,10 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 	SubShader
 	{
 		// No culling or depth
-		Cull Off ZWrite Off ZTest Always
-
+		Cull Off ZWrite Off 
+		Tags{
+			"PreviewType" = "Skybox"
+		}
 		Pass
 		{
 			CGPROGRAM
@@ -63,17 +65,36 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 			half4 frag (v2f i) : SV_Target
 			{
 				i.worldPos /= i.worldPos.w;
-				float3 viewDir = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
-				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
+				float3 view_ray = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
+				float3 sun_direction = normalize(_WorldSpaceLightPos0.xyz);
 				AtmosphereParameters atm = GetAtmParameters();
 
-				float r = length(_WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0));
-				float mu = dot(viewDir, float3(0.0f, 1.0f, 0.0f));
-				float mu_s = dot(float3(0.0f, 1.0f, 0.0f), lightDir);
-				float3 transmittance = GetTransmittanceToTopAtmosphereBoundary(atm, _Transmittance, _TransmittanceSize, r, mu);
+				float3 camera = _WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0);
+				float r = length(camera);
+				Length rmu = dot(camera, view_ray);
 
-				float nu = dot(viewDir, lightDir);
+				Length distance_to_top_atmosphere_boundary = -rmu -
+					sqrt(rmu * rmu - r * r + atm.top_radius * atm.top_radius);
+
+				if (distance_to_top_atmosphere_boundary > 0.0 ) {
+					camera = camera + view_ray * distance_to_top_atmosphere_boundary;
+					r = atm.top_radius;
+					rmu += distance_to_top_atmosphere_boundary;
+				}
+				else if (r > atm.top_radius) {
+					// If the view ray does not intersect the atmosphere, simply return 0.
+					return 0.0f;
+				}
+
+				// Compute the r, mu, mu_s and nu parameters needed for the texture lookups.
+				Number mu = rmu / r;
+				Number mu_s = dot(camera, sun_direction) / r;
+				Number nu = dot(view_ray, sun_direction);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
+
+				float3 transmittance = ray_r_mu_intersects_ground ? 0.0f :
+					GetTransmittanceToTopAtmosphereBoundary(
+						atm, _Transmittance, _TransmittanceSize, r, mu);
 
 				float3 direct_sun_strength = 0.0f;
 				{
@@ -83,32 +104,30 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 					}
 				}
 
-				float3 scattering_size = _ScatteringSize;
-
 				float3 rayleigh =
 					GetScattering(atm,
 						_SingleRayleigh,
-						scattering_size,
+						_ScatteringSize,
 						r, mu, mu_s,
-						false) *
+						ray_r_mu_intersects_ground) *
 					AdhocRayleighPhaseFunction(nu);
 
 				float3 mie = 
 					GetScattering(atm,
 						_SingleMie,
-						scattering_size,
+						_ScatteringSize,
 						r, mu, mu_s,
-						false) *
+						ray_r_mu_intersects_ground) *
 					MiePhaseFunction(atm.mie_phase_function_g, nu);
 			
 				float3 multiple =
 					GetScattering(atm,
 						_MultipleScattering,
-						scattering_size,
+						_ScatteringSize,
 						r, mu, mu_s,
-						false);
+						ray_r_mu_intersects_ground);
 
-				return float4(_LightScale * _LightColor0 * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
+				return float4(_LightScale * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
 			}
 			ENDCG
 		}

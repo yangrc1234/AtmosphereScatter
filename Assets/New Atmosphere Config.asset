@@ -13,13 +13,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   AtmosphereDensity: 1
   LightingScale: 12.56637
-  atmosphere_top_radius: 6440000
+  atmosphere_top_radius: 6420000
   atmosphere_bot_radius: 6360000
   atmosphere_sun_angular_radius: 0.025
   rayleigh_scattering: 1
   rayleigh_scale_height: 8000
   mie_scattering: 1
   mie_scale_height: 1200
-  mie_phase_function_g: 0.85
+  mie_phase_function_g: 0.8
   absorption_extinction: 1
   absorption_extinction_scale_height: 1000

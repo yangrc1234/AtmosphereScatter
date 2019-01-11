@@ -237,17 +237,17 @@ AtmosphereParameters GetAtmParameters() {
 }
 
 InverseSolidAngle RayleighPhaseFunction(Number nu) {
-	InverseSolidAngle k = 3.0 / (16.0 * PI);
+	InverseSolidAngle k = 3.0 / (16.0 * PI * sr);
 	return k * (1.0 + nu * nu);
 	//return 0.8f * (1.4f + 0.5f * nu) / (4.0 * PI);
 }
 
 InverseSolidAngle AdhocRayleighPhaseFunction(Number nu) {
-	return 0.8f * (1.4f + 0.5f * nu) / (4.0 * PI);
+	return 0.8f * (1.4f + 0.5f * nu) / (4.0 * PI * sr);
 }
 
 InverseSolidAngle MiePhaseFunction(Number g, Number nu) {
-	InverseSolidAngle k = 3.0 / (8.0 * PI) * (1.0 - g * g) / (2.0 + g * g);
+	InverseSolidAngle k = 3.0 / (8.0 * PI * sr) * (1.0 - g * g) / (2.0 + g * g);
 	return k * (1.0 + nu * nu) / pow(abs(1.0 + g * g - 2.0 * g * nu), 1.5);
 }
 
