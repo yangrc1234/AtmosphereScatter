@@ -126,7 +126,7 @@ RadianceSpectrum ComputeMultipleScattering(
 	assert(mu >= -1.0 && mu <= 1.0);
 	assert(mu_s >= -1.0 && mu_s <= 1.0);
 
-	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s - (1 - mu * mu) * (1 - mu_s * mu_s);
+	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
 
 	// Number of intervals for the numerical integration.
 	const int SAMPLE_COUNT = 50;

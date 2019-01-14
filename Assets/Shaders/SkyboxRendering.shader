@@ -62,6 +62,14 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
 			);
 
+			void ComputeSingleScattering(
+				IN(AtmosphereParameters) atmosphere,
+				IN(TransmittanceTexture) transmittance_texture,
+				uint2 texture_size,
+				Length r, Number mu, Number mu_s, Number nu,
+				bool ray_r_mu_intersects_ground,
+				OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie);
+
 			half4 frag (v2f i) : SV_Target
 			{
 				i.worldPos /= i.worldPos.w;
@@ -92,6 +100,19 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Number nu = dot(view_ray, sun_direction);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
+				float3 testRayleigh, testMie;
+				//ComputeSingleScattering(
+				//	atm,
+				//	_Transmittance,
+				//	_TransmittanceSize,
+				//	r,
+				//	mu,
+				//	mu_s,
+				//	nu,
+				//	ray_r_mu_intersects_ground,
+				//	testRayleigh, testMie);
+				//return float4(testRayleigh + testMie, 1.0f);
+
 				float3 transmittance = ray_r_mu_intersects_ground ? 0.0f :
 					GetTransmittanceToTopAtmosphereBoundary(
 						atm, _Transmittance, _TransmittanceSize, r, mu);
@@ -110,7 +131,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						_ScatteringSize,
 						r, mu, mu_s,
 						ray_r_mu_intersects_ground) *
-					AdhocRayleighPhaseFunction(nu);
+					RayleighPhaseFunction(nu);
 
 				float3 mie = 
 					GetScattering(atm,

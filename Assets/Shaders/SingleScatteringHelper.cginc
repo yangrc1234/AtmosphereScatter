@@ -8,13 +8,12 @@ void ComputeSingleScatteringIntegrand(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
 	uint2 texture_size,
-	Length r, Number mu, Number mu_s, Length d,
+	Length r, Number mu, Number mu_s, Number nu, Length d,
 	bool ray_r_mu_intersects_ground,
 	OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie) {
 	Length r_d = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
 
 	//Here we ignore azimuth, and calculate nu assuming all points are on the same plane.
-	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s - (1 - mu * mu) * (1 - mu_s * mu_s);
 	Number mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
 	
 	DimensionlessSpectrum transmittance =
@@ -35,7 +34,7 @@ void ComputeSingleScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(TransmittanceTexture) transmittance_texture,
 	uint2 texture_size,
-	Length r, Number mu, Number mu_s,
+	Length r, Number mu, Number mu_s, Number nu,
 	bool ray_r_mu_intersects_ground,
 	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
@@ -57,7 +56,7 @@ void ComputeSingleScattering(
 		DimensionlessSpectrum rayleigh_i;
 		DimensionlessSpectrum mie_i;
 		ComputeSingleScatteringIntegrand(atmosphere, transmittance_texture, texture_size,
-			r, mu, mu_s, d_i, ray_r_mu_intersects_ground, rayleigh_i, mie_i);
+			r, mu, mu_s, nu, d_i, ray_r_mu_intersects_ground, rayleigh_i, mie_i);
 		// Sample weight (from the trapezoidal rule).
 		Number weight_i = (i == 0 || i == SAMPLE_COUNT) ? 0.5 : 1.0;
 		rayleigh_sum += rayleigh_i * weight_i;
@@ -191,8 +190,9 @@ void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
 	bool ray_r_mu_intersects_ground;
 	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, gl_frag_coord,
 		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
 	ComputeSingleScattering(atmosphere, transmittance_texture, transmittance_size,
-		r, mu, mu_s, ray_r_mu_intersects_ground, rayleigh, mie);
+		r, mu, mu_s, nu, ray_r_mu_intersects_ground, rayleigh, mie);
 }
 
 RadianceSpectrum GetScattering(
@@ -218,7 +218,7 @@ RadianceSpectrum GetScattering(
 	int scattering_order
 	) {
 
-	Number nu = mu * mu_s - (1 - mu * mu) * (1 - mu_s * mu_s);
+	Number nu = mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
 
 	if (scattering_order == 1) {
 		IrradianceSpectrum rayleigh = GetScattering(
