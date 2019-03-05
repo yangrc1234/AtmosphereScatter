@@ -7,11 +7,16 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 		_SingleRayleigh("SingleRayleigh", 3D) = "white" {}
 		_SingleMie("SingleMie", 3D) = "white" {}
 		_MultipleScattering("MultipleScattering", 3D) = "white"{}
+		_Transmittance("Transmittance", 2D) = "white"{}
+		_ScatteringSize("ScatteringSize", Vector) = (32.0, 32.0, 128.0, 0.0)
+		_TransmittanceSize("TransmittanceSize", Vector) = (512.0, 512.0, 0.0, 0.0)
+		_LightScale("LightScale", Float) = 12.0
 	}
 	SubShader
 	{
 		// No culling or depth
-		Cull Off ZWrite Off 
+		Cull Off 
+		ZWrite Off 
 		Tags{
 			"PreviewType" = "Skybox"
 		}
@@ -76,7 +81,6 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				float3 view_ray = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
 				float3 sun_direction = normalize(_WorldSpaceLightPos0.xyz);
 				AtmosphereParameters atm = GetAtmParameters();
-
 				float3 camera = _WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0);
 				float r = length(camera);
 				Length rmu = dot(camera, view_ray);

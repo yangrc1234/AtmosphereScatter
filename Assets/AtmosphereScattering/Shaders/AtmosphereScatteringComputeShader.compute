@@ -4,7 +4,7 @@ Helper functions. See https://ebruneton.github.io/precomputed_atmospheric_scatte
 */
 //Convert (0.0, 1.0) to actual texel position.
 
-#include "TransmittanceHelper.cginc"
+#include "./TransmittanceHelper.cginc"
 #include "SingleScatteringHelper.cginc"
 #include "MultipleScatteringHelper.cginc"
 #include "GroundHelper.cginc"
@@ -31,6 +31,9 @@ int3 ScatteringSize;
 int2 IrradianceSize; 
 int ScatteringOrder;
 
+//When only part of results need to be computed, we offset some results.
+uint3 _ThreadOffset;
+
 
 /*
 ==================================
@@ -52,6 +55,8 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
 [numthreads(1, 1, 1)]
 void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID)
 {
+	id += _ThreadOffset;
+
 	uint w, h;
 	TransmittanceLUTResult.GetDimensions(w, h);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -81,6 +86,8 @@ RWTexture3D<float3> SingleScatteringMieLUTResult;
 [numthreads(1, 1, 1)]
 void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID)
 {
+	id += _ThreadOffset;
+
 	uint w, h, d;
 	SingleScatteringRayleighLUTResult.GetDimensions(w, h, d);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -117,6 +124,9 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
 
 [numthreads(1,1,1)]
 void CalculateMultipleScatteringDensityLUT(uint3 id : SV_DispatchThreadID) {
+
+	id += _ThreadOffset;
+
 	uint w, h, d;
 	MultipleScatteringDensityResult.GetDimensions(w, h, d);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -152,6 +162,8 @@ RadianceSpectrum ComputeMultipleScatteringTexture(
 
 [numthreads(1, 1, 1)]
 void CalculateMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
+	id += _ThreadOffset;
+
 	uint w, h, d;
 	MultipleScatteringResult.GetDimensions(w, h, d);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -180,6 +192,8 @@ IrradianceSpectrum ComputeDirectIrradianceTexture(
 
 [numthreads(1, 1, 1)]
 void CalculateGroundDirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
+	id += _ThreadOffset;
+
 	uint w, h;
 	GroundDirectIrradianceResult.GetDimensions(w, h);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -210,6 +224,8 @@ IrradianceSpectrum ComputeIndirectIrradianceTexture(
 
 [numthreads(1, 1, 1)]
 void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
+	id += _ThreadOffset;
+
 	uint w, h;
 	GroundIndirectIrradianceResult.GetDimensions(w, h);
 	AtmosphereParameters atm = GetAtmParameters();
@@ -235,6 +251,8 @@ RWTexture2D<float3> GroundIrradianceSumAdder;
 
 [numthreads(1, 1, 1)]
 void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID) {
+	id += _ThreadOffset;
+
 	GroundIrradianceSumTarget[id.xy] += GroundIrradianceSumAdder[id.xy];
 }
 
@@ -249,5 +267,7 @@ RWTexture3D<float4> ScatteringSumAdd;
 
 [numthreads(1, 1, 1)]
 void CombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
+	id += _ThreadOffset;
+
 	ScatteringSumTarget[id.xyz] += ScatteringSumAdd[id.xyz];
 }

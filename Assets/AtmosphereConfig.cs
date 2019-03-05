@@ -37,7 +37,6 @@ namespace Yangrc.AtmosphereScattering {
             mat.SetFloat(Keys.mie_phase_function_g, mie_phase_function_g);
             mat.SetVector(Keys.absorption_extinction, AtmosphereDensity * absorption_extinction * OZoneConst);
             mat.SetFloat(Keys.absorption_extinction_scale_height, absorption_extinction_scale_height);
-
             mat.SetFloat(Keys.lightingScale, LightingScale);
 
         }

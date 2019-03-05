@@ -10,11 +10,11 @@ public class WatchIt : MonoBehaviour {
     public Yangrc.AtmosphereScattering.Test test;
     // Update is called once per frame
 
-    private void Start() {
-        test.UpdateTransmittance();
-        test.UpdateSingleScattering();
-        test.UpdateMultipleScattering();
-    }
+    //private void Start() {
+    //    test.UpdateTransmittance();
+    //    test.UpdateSingleScattering();
+    //    test.UpdateMultipleScattering();
+    //}
 
     void Update () {
         time += Time.deltaTime * speed;
