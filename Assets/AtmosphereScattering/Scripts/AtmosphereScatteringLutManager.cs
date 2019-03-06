@@ -24,31 +24,35 @@ namespace Yangrc.AtmosphereScattering {
 
     public static class AtmLutHelper {
 
-        public static void CreateTransmittanceTexture(ref RenderTexture target, AtmLutGenerateConfig lutconfig) {
-            CreateLUT(ref target, "Transmittance", lutconfig.transmittanceSize.x, lutconfig.transmittanceSize.y, 0, RenderTextureFormat.ARGBFloat);
+        /// <summary>
+        /// These functions help do all the "SetXXX" stuff.
+        /// So we can focus on how to generate Luts.
+        /// </summary>
+        
+        public static void FindKernals(
+            ComputeShader computeShader,
+            out int CalculateTransmittanceLUT,
+            out int CalculateSingleScatteringLUT,
+            out int CalculateGroundDirectIrradianceLUT,
+            out int CalculateGroundIndirectIrradianceLUT,
+            out int CalculateMultipleScatteringDensityLUT,
+            out int CalculateMultipleScatteringLUT,
+            out int CombineGroundIrradianceLUT,
+            out int CombineMultipleScatteringLUT
+            ) {
+            CalculateTransmittanceLUT = computeShader.FindKernel("CalculateTransmittanceLUT");
+            CalculateSingleScatteringLUT = computeShader.FindKernel("CalculateSingleScatteringLUT");
+            CalculateGroundDirectIrradianceLUT = computeShader.FindKernel("CalculateGroundDirectIrradianceLUT");
+            CalculateGroundIndirectIrradianceLUT = computeShader.FindKernel("CalculateGroundIndirectIrradianceLUT");
+            CalculateMultipleScatteringDensityLUT = computeShader.FindKernel("CalculateMultipleScatteringDensityLUT");
+            CalculateMultipleScatteringLUT = computeShader.FindKernel("CalculateMultipleScatteringLUT");
+            CombineGroundIrradianceLUT = computeShader.FindKernel("CombineGroundIrradianceLUT");
+            CombineMultipleScatteringLUT = computeShader.FindKernel("CombineMultipleScatteringLUT");
         }
 
-        private static void NormalizeProgressPointer(float start, float end, int length, out int startInt, out int endInt) {
-            if (end > start) {
-                var t = start;
-                start = end;
-                end = t;
-            }
-            start = Mathf.Clamp01(start);
-            end = Mathf.Clamp01(end);
-            startInt = Mathf.FloorToInt(length * start);
-            endInt = Mathf.FloorToInt(length * end);
-        }
-
-        public static void UpdateTransmittance(RenderTexture target, AtmosphereConfig atmosphereConfig, AtmLutGenerateConfig lutConfig, ComputeShader computeShader, float start, float end) {
-            var kernal = computeShader.FindKernel("CalculateTransmittanceLUT");
-            atmosphereConfig.Apply(computeShader);
-            lutConfig.Apply(computeShader);
-            int xStart, xEnd;
-            NormalizeProgressPointer(start, end, lutConfig.transmittanceSize.x, out xStart, out xEnd);
-            computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
-            computeShader.SetTexture(kernal, "TransmittanceLUTResult", target);
-            computeShader.Dispatch(kernal, xEnd - xStart, lutConfig.transmittanceSize.y, 1);
+        public static void ApplyComputeShaderParams(AtmLutGenerateConfig lutConfig, AtmosphereConfig atmConfig, ComputeShader shader) {
+            lutConfig.Apply(shader);
+            atmConfig.Apply(shader);
         }
 
         private static void CreateLUT(ref RenderTexture result, string name, int width, int height, int zsize, RenderTextureFormat format) {
@@ -68,16 +72,54 @@ namespace Yangrc.AtmosphereScattering {
             result.Create();
         }
 
+        private static void NormalizeProgressPointer(float start, float end, int length, out int startInt, out int endInt) {
+            if (end > start) {
+                var t = start;
+                start = end;
+                end = t;
+            }
+            start = Mathf.Clamp01(start);
+            end = Mathf.Clamp01(end);
+            startInt = Mathf.FloorToInt(length * start);
+            endInt = Mathf.FloorToInt(length * end);
+        }
+
+        public static void CreateTransmittanceTexture(
+            ref RenderTexture target,
+            AtmLutGenerateConfig lutconfig) {
+            CreateLUT(ref target, "Transmittance", lutconfig.transmittanceSize.x, lutconfig.transmittanceSize.y, 0, RenderTextureFormat.ARGBFloat);
+        }
+
+        public static void UpdateTransmittance(
+            RenderTexture target, 
+            AtmLutGenerateConfig lutConfig, 
+            ComputeShader computeShader, 
+            int kernal,
+            float start, 
+            float end) 
+            {
+            int xStart, xEnd;
+            NormalizeProgressPointer(start, end, lutConfig.transmittanceSize.x, out xStart, out xEnd);
+            computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
+            computeShader.SetTexture(kernal, "TransmittanceLUTResult", target);
+            computeShader.Dispatch(kernal, xEnd - xStart, lutConfig.transmittanceSize.y, 1);
+        }
+
         public static void CreateSingleRayleighMieTexture(ref RenderTexture rayleigh, ref RenderTexture mie, AtmLutGenerateConfig lutconfig) {
             CreateLUT(ref rayleigh, "SingleMie", lutconfig.scatteringSize.x, lutconfig.scatteringSize.y, lutconfig.scatteringSize.z, RenderTextureFormat.ARGBFloat);
             CreateLUT(ref mie, "SingleRayleigh", lutconfig.scatteringSize.x, lutconfig.scatteringSize.y, lutconfig.scatteringSize.z, RenderTextureFormat.ARGBFloat);
         }
 
-        public static void UpdateSingleRayleighMie(RenderTexture rayleightarget, RenderTexture mietarget, RenderTexture TransmittanceLUT, AtmosphereConfig atmosphereConfig, AtmLutGenerateConfig lutConfig, ComputeShader computeShader, float start, float end) {
-
-            var kernal = computeShader.FindKernel("CalculateSingleScatteringLUT");
-            atmosphereConfig.Apply(computeShader);
-            lutConfig.Apply(computeShader);
+        public static void UpdateSingleRayleighMie(
+            RenderTexture rayleightarget, 
+            RenderTexture mietarget, 
+            RenderTexture TransmittanceLUT, 
+            AtmLutGenerateConfig lutConfig, 
+            ComputeShader computeShader, 
+            int kernal,
+            float start, 
+            float end
+            ) {
 
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.scatteringSize.x, out xStart, out xEnd);
@@ -90,7 +132,136 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.Dispatch(kernal, xEnd - xStart, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z);
         }
 
+        public static void CreateGroundIrradianceTexture(ref RenderTexture target, int order, AtmLutGenerateConfig lutconfig) {
+            CreateLUT(ref target, "Ground Irrdiance Order " + order, lutconfig.irradianceSize.x, lutconfig.irradianceSize.y, 0, RenderTextureFormat.ARGBFloat);
+        }
 
+        public static void UpdateGroundDirectIrradiance(
+            RenderTexture target,
+            RenderTexture TransmittanceLUT,
+            AtmosphereConfig atmosphereConfig,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int groundDirectKernal) {
+            atmosphereConfig.Apply(computeShader);
+            lutConfig.Apply(computeShader);
+            computeShader.SetTexture(groundDirectKernal, "TransmittanceLUT", TransmittanceLUT);
+            computeShader.SetTexture(groundDirectKernal, "GroundDirectIrradianceResult", target);
+            computeShader.Dispatch(groundDirectKernal, lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 1);
+        }
+
+        public static void UpdateGroundSingleIrradiance(
+            RenderTexture target,
+            RenderTexture singleRayleigh,
+            RenderTexture singleMie,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int groundIndirectKernal) {
+
+            computeShader.SetTexture(groundIndirectKernal, "SingleRayleighScatteringLUT", singleRayleigh);
+            computeShader.SetTexture(groundIndirectKernal, "SingleMieScatteringLUT", singleMie);
+            computeShader.SetInt("ScatteringOrder", 1);
+            computeShader.SetTexture(groundIndirectKernal, "GroundIndirectIrradianceResult", target);
+            computeShader.Dispatch(groundIndirectKernal, lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 1);
+        }
+
+        public static void UpdateGroundIrradiance(
+            RenderTexture target,
+            RenderTexture multiScattering,
+            int scatteringOrder,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int groundIndirectKernal) {
+
+            computeShader.SetInt("ScatteringOrder", scatteringOrder);
+            computeShader.SetTexture(groundIndirectKernal, "MultipleScatteringLUT", multiScattering);
+            computeShader.SetTexture(groundIndirectKernal, "GroundIndirectIrradianceResult", target);
+            computeShader.Dispatch(groundIndirectKernal, lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 1);
+        }
+
+        public static void UpdateSecondOrderMultiScatteringDensity(
+            RenderTexture target,
+            RenderTexture TransmittanceLUT,
+            RenderTexture SingleScatteringLUTRayleigh,
+            RenderTexture SingleScatteringLUTMie,
+            RenderTexture GroundDirectIrradianceLUT,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int densityKernal) {
+            computeShader.SetTexture(densityKernal, "TransmittanceLUT", TransmittanceLUT);
+            computeShader.SetTexture(densityKernal, "SingleRayleighScatteringLUT", SingleScatteringLUTRayleigh);
+            computeShader.SetTexture(densityKernal, "SingleMieScatteringLUT", SingleScatteringLUTMie);
+            computeShader.SetTexture(densityKernal, "IrradianceLUT", GroundDirectIrradianceLUT);
+            computeShader.SetInt("ScatteringOrder", 1);
+            computeShader.SetTexture(densityKernal, "MultipleScatteringDensityResult", target);
+            computeShader.Dispatch(densityKernal, lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z);
+        }
+
+        public static void UpdateMultiScatteringDensity(
+            RenderTexture target,
+            RenderTexture TransmittanceLUT,
+            RenderTexture multiScattering,
+            RenderTexture GroundIrradianceLUTOfLastOrder,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int densityKernal) {
+            computeShader.SetTexture(densityKernal, "TransmittanceLUT", TransmittanceLUT);
+            computeShader.SetTexture(densityKernal, "IrradianceLUT", GroundIrradianceLUTOfLastOrder);
+            computeShader.SetInt("ScatteringOrder", 1);
+            computeShader.SetTexture(densityKernal, "MultipleScatteringDensityResult", target);
+            computeShader.Dispatch(densityKernal, lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z);
+        }
+
+        public static void UpdateMultiScatteringCombineDensity(
+            RenderTexture target,
+            RenderTexture TransmittanceLUT,
+            RenderTexture multipleScatteringDensity,
+            int scatteringOrder,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int scatteringKernal) {
+            computeShader.SetTexture(scatteringKernal, "TransmittanceLUT", TransmittanceLUT);
+            computeShader.SetTexture(scatteringKernal, "MultipleScatteringDensityLUT", multipleScatteringDensity);
+            computeShader.SetTexture(scatteringKernal, "MultipleScatteringResult", target);
+            computeShader.SetInt("ScatteringOrder", scatteringOrder);
+            computeShader.Dispatch(scatteringKernal, lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z);
+        }
+
+        public static void CreateFinalCombinedTexture(
+            ref RenderTexture MultipleScatteringLUT, 
+            ref RenderTexture IrradianceLUT,
+            AtmLutGenerateConfig lutConfig
+            ) {
+            CreateLUT(ref MultipleScatteringLUT, "Multiple Scattering Combined Final", lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z, RenderTextureFormat.ARGBFloat);
+            CreateLUT(ref IrradianceLUT, "Irradiance Combined Final", lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 0, RenderTextureFormat.ARGBFloat);
+        }
+
+        public static void UpdateFinalCombinedMultiScatter(
+            RenderTexture multiScatteringTarget,
+            RenderTexture multiScatteringOfSingleOrder,
+            int MultipleScatteringIterations,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int combineScatterKernal
+            ) {
+            computeShader.SetTexture(combineScatterKernal, "ScatteringSumTarget", multiScatteringTarget);
+            computeShader.SetTexture(combineScatterKernal, "ScatteringSumAdd", multiScatteringOfSingleOrder);
+            computeShader.Dispatch(combineScatterKernal, lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z);
+        }
+
+        public static void UpdateFinalCombinedIrradiance(
+            RenderTexture target,
+            RenderTexture irradianceOfSingleOrder,
+            int MultipleScatteringIterations,
+            AtmosphereConfig atmosphereConfig,
+            AtmLutGenerateConfig lutConfig,
+            ComputeShader computeShader,
+            int combineScatterKernal
+            ) {
+            computeShader.SetTexture(combineScatterKernal, "GroundIrradianceSumTarget", target);
+            computeShader.SetTexture(combineScatterKernal, "ScatteringSumAdd", irradianceOfSingleOrder);
+            computeShader.Dispatch(combineScatterKernal, lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 1);
+        }
     }
 
     public class AtmLutUpdater {
