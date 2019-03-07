@@ -39,17 +39,41 @@ namespace Yangrc.AtmosphereScattering {
 
     public class ProgressiveLutUpdater {
 
+        public void Cleanup() {
+            var allTextures = new List<RenderTexture> {
+                this.groundIrradianceCombine,
+                this.multiScatteringCombine,
+                this.multiScatteringDensity,
+                
+                this.singleMie,
+                this.singleRayleigh,
+                this.transmittance,
+            };
+            allTextures.AddRange(
+                this.groundIrradianceTemp);
+            allTextures.AddRange(
+                this.multiScatteringTemp);
+
+            for (int i = 0; i < allTextures.Count; i++) {
+                if (allTextures[i] != null && allTextures[i].IsCreated())
+                    allTextures[i].Release();
+            }
+        }
+
         public interface ITimeLogger {
             void Log(string itemName);
         }
 
-        AtmosphereConfig atmConfig;
-        AtmLutGenerateConfig lutConfig;
+        public AtmosphereConfig atmConfigToUse { get; set; }
+        public AtmosphereConfig atmConfigUsedToUpdate { get; private set; }
+        public AtmLutGenerateConfig lutConfig { get; set; }
         ITimeLogger logger;
         public ProgressiveLutUpdater(AtmosphereConfig atmConfig, AtmLutGenerateConfig lutConfig, ITimeLogger logger = null) {
-            this.atmConfig = atmConfig;
+            this.atmConfigToUse = atmConfig;
             this.lutConfig = lutConfig;
             this.logger = logger;
+            working = false;
+            atmConfigUsedToUpdate = ScriptableObject.CreateInstance<AtmosphereConfig>();
         }
         public const int k_MultiScatteringOrderDepth = 4;
 
@@ -61,7 +85,7 @@ namespace Yangrc.AtmosphereScattering {
         public RenderTexture singleRayleigh, singleMie;
         public RenderTexture multiScatteringCombine, groundIrradianceCombine;
 
-        public bool isDone { get; private set; }
+        public bool working { get; private set; }
 
         public const int SINGLE_RAYLEIGH_STEP = 1;
         public const int MULTI_SCATTERING_DENSITY_STEP = 1;
@@ -73,12 +97,13 @@ namespace Yangrc.AtmosphereScattering {
                 logger.Log(t);
         }
 
-        public IEnumerator UpdateRoutine() {
-            isDone = false;
+        public IEnumerator UpdateCoroutine() {
+            working = true;
+            atmConfigUsedToUpdate.CopyDataFrom(atmConfigToUse);
             AtmLutHelper.CreateTransmittanceTexture(ref transmittance, lutConfig);
             using (new ConvenientStopwatch("Complete Lut update timecost", Log)) {
                 //Update transmittance.
-                AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                 using (new ConvenientStopwatch("Transmittance ", Log)) {
                     AtmLutHelper.UpdateTransmittance(
                         transmittance,
@@ -91,7 +116,7 @@ namespace Yangrc.AtmosphereScattering {
 
                 //Update GroundDirect
                 using (new ConvenientStopwatch("GroundDirect", Log)) {
-                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                     AtmLutHelper.CreateGroundIrradianceTexture(ref groundIrradianceTemp[0], 0, lutConfig);
                     AtmLutHelper.UpdateGroundDirectIrradiance(groundIrradianceTemp[0], transmittance, lutConfig, 0.0f, 1.0f);
                     yield return null;
@@ -100,7 +125,7 @@ namespace Yangrc.AtmosphereScattering {
                 //Update SingleRayleigh/Mie
                 for (int i = 0; i < SINGLE_RAYLEIGH_STEP; i++) {
                     using (new ConvenientStopwatch("Single Rayleigh/Mie" + i, Log)) {
-                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                         AtmLutHelper.CreateSingleRayleighMieTexture(ref singleRayleigh, ref singleMie, lutConfig);
                         AtmLutHelper.UpdateSingleRayleighMie(singleRayleigh, singleMie, transmittance, lutConfig, (float)i / SINGLE_RAYLEIGH_STEP, (float)(i + 1) / SINGLE_RAYLEIGH_STEP);
                         yield return null;
@@ -111,7 +136,7 @@ namespace Yangrc.AtmosphereScattering {
 
                 using (new ConvenientStopwatch("GroundIrradiance 1", Log)) {
                     //Ground irradiance of 1-st order scattering.
-                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                     AtmLutHelper.CreateGroundIrradianceTexture(ref groundIrradianceTemp[1], 1, lutConfig);
                     AtmLutHelper.UpdateGroundIrradiance(groundIrradianceTemp[1], singleRayleigh, singleMie, multiScatteringTemp[1], 1, lutConfig, 0.0f, 1.0f);
                     yield return null;
@@ -123,7 +148,7 @@ namespace Yangrc.AtmosphereScattering {
                 for (int i = 2; i <= 4; i++) {
                     for (int j = 0; j < MULTI_SCATTERING_DENSITY_STEP; j++) {
                         using (new ConvenientStopwatch("Multi Scattering Density" + i + j, Log)) {
-                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                             AtmLutHelper.UpdateMultiScatteringDensity(multiScatteringDensity, transmittance, singleRayleigh, singleMie, multiScatteringTemp[i - 1], groundIrradianceTemp[i - 2], i - 1, lutConfig,
                                 (float)j / MULTI_SCATTERING_DENSITY_STEP,
                                 (float)(j + 1) / MULTI_SCATTERING_DENSITY_STEP);
@@ -131,11 +156,11 @@ namespace Yangrc.AtmosphereScattering {
                         }
                     }
 
-                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
                     AtmLutHelper.CreateMultiScatteringTexture(ref multiScatteringTemp[i], i, lutConfig);
 
                     for (int j = 0; j < MULTI_SCATTERING_STEP; j++) {
                         using (new ConvenientStopwatch("Multi Scattering " + i + j, Log)) {
+                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                             AtmLutHelper.UpdateMultiScatteringCombineDensity(multiScatteringTemp[i], transmittance, multiScatteringDensity, lutConfig,
                                 (float)j / MULTI_SCATTERING_STEP,
                                 (float)(j + 1) / MULTI_SCATTERING_STEP);
@@ -146,7 +171,7 @@ namespace Yangrc.AtmosphereScattering {
                     AtmLutHelper.CreateGroundIrradianceTexture(ref groundIrradianceTemp[i], i, lutConfig);
                     for (int j = 0; j < MULTI_GROUND_IRRADIANCE_STEP; j++) {
                         using (new ConvenientStopwatch("Multi Scattering Ground Irradiance" + i + j, Log)) {
-                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
+                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                             AtmLutHelper.UpdateGroundIrradiance(groundIrradianceTemp[i], singleRayleigh, singleMie, multiScatteringTemp[i], i, lutConfig,
                                 (float)j / MULTI_GROUND_IRRADIANCE_STEP,
                                 (float)(j + 1) / MULTI_GROUND_IRRADIANCE_STEP);
@@ -157,18 +182,34 @@ namespace Yangrc.AtmosphereScattering {
 
                 //Combine our multiscattering texture.
                 AtmLutHelper.CreateFinalCombinedTexture(ref multiScatteringCombine, ref groundIrradianceCombine, lutConfig);
+                AtmLutHelper.ClearFinalCombinedMultiScatter(multiScatteringCombine, lutConfig);
+                AtmLutHelper.ClearFinalCombinedIrradiance(groundIrradianceCombine, lutConfig);
+
+                AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
                 for (int i = 2; i <= 4; i++) {
-                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
                     AtmLutHelper.UpdateFinalCombinedMultiScatter(multiScatteringCombine, multiScatteringTemp[i], lutConfig);
                 }
 
                 for (int i = 0; i <= 4; i++) {
-                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfig);
                     AtmLutHelper.UpdateFinalCombinedIrradiance(groundIrradianceCombine, groundIrradianceTemp[i], lutConfig);
                 }
             }
+            //All calculations are done.
+            //Release all temp textures. They won't be used in the future.
+            for (int i = 0; i < groundIrradianceTemp.Length; i++) {
+                if (groundIrradianceTemp[i] != null) {
+                    groundIrradianceTemp[i].Release();
+                    groundIrradianceTemp[i] = null;
+                }
+            }
+            for (int i = 0; i < multiScatteringTemp.Length; i++) {
+                if (multiScatteringTemp[i] != null) {
+                    multiScatteringTemp[i].Release();
+                    multiScatteringTemp[i] = null;
+                }
+            }
             //Done!
-            isDone = true;
+            working = false;
             yield break;
         }
     }
@@ -224,6 +265,8 @@ namespace Yangrc.AtmosphereScattering {
         private static int CalculateMultipleScatteringLUT;
         private static int SumGroundIrradianceLUT;
         private static int SumMultipleScatteringLUT;
+        private static int ClearCombineGroundIrradianceLUT;
+        private static int ClearCombineMultipleScatteringLUT;
 
         /// <summary>
         /// These functions help do all the "SetXXX" stuff.
@@ -239,6 +282,8 @@ namespace Yangrc.AtmosphereScattering {
             CalculateMultipleScatteringLUT = computeShader.FindKernel("CalculateMultipleScatteringLUT");
             SumGroundIrradianceLUT = computeShader.FindKernel("CombineGroundIrradianceLUT");
             SumMultipleScatteringLUT = computeShader.FindKernel("CombineMultipleScatteringLUT");
+            ClearCombineGroundIrradianceLUT = computeShader.FindKernel("ClearCombineGroundIrradianceLUT");
+            ClearCombineMultipleScatteringLUT = computeShader.FindKernel("ClearCombineMultipleScatteringLUT");
         }
 
         public static void ApplyComputeShaderParams(AtmLutGenerateConfig lutConfig, AtmosphereConfig atmConfig) {
@@ -433,6 +478,14 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.Dispatch(CalculateMultipleScatteringLUT, xEnd - xStart, lutConfig.scatteringSize.y / 8, lutConfig.scatteringSize.z / 8);
         }
 
+        public static void ClearFinalCombinedMultiScatter(
+            RenderTexture multiScatteringTarget,
+            AtmLutGenerateConfig lutConfig
+            ) {
+            computeShader.SetTexture(ClearCombineMultipleScatteringLUT, "ScatteringSumTarget", multiScatteringTarget);
+            computeShader.Dispatch(ClearCombineMultipleScatteringLUT, lutConfig.scatteringSize.x / 8, lutConfig.scatteringSize.y / 8, lutConfig.scatteringSize.z / 8);
+        }
+
         public static void UpdateFinalCombinedMultiScatter(
             RenderTexture multiScatteringTarget,
             RenderTexture multiScatteringOfSingleOrder,
@@ -441,6 +494,14 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.SetTexture(SumMultipleScatteringLUT, "ScatteringSumTarget", multiScatteringTarget);
             computeShader.SetTexture(SumMultipleScatteringLUT, "ScatteringSumAdd", multiScatteringOfSingleOrder);
             computeShader.Dispatch(SumMultipleScatteringLUT, lutConfig.scatteringSize.x / 8, lutConfig.scatteringSize.y / 8, lutConfig.scatteringSize.z / 8);
+        }
+
+        public static void ClearFinalCombinedIrradiance(
+            RenderTexture target,
+            AtmLutGenerateConfig lutConfig
+            ) {
+            computeShader.SetTexture(ClearCombineGroundIrradianceLUT, "GroundIrradianceSumTarget", target);
+            computeShader.Dispatch(ClearCombineGroundIrradianceLUT, lutConfig.irradianceSize.x / 32, lutConfig.irradianceSize.y / 32, 1);
         }
 
         public static void UpdateFinalCombinedIrradiance(

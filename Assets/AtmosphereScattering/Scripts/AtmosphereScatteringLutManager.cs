@@ -18,12 +18,23 @@ namespace Yangrc.AtmosphereScattering {
 
         [SerializeField]
         private ComputeShader computeShader;
-        private ProgressiveLutUpdater updater;
         public AtmLutGenerateConfig lutConfig;
         public AtmosphereConfig atmosphereConfig;
         public Material skyboxMaterial;
 
-        private void Awake() {
+        //We prepare 3 updater, the 0-index one is "currently updating", 1-index is "just updated", and 2-index is the oldest one.
+        //During rendering, we interpolate 1 and 2, and updating 0.
+        private ProgressiveLutUpdater[] pingPongUpdaters = new ProgressiveLutUpdater[3];
+        //Shift all updater to one right.
+        private void RotatePingpongUpdater() {
+            var temp = pingPongUpdaters[pingPongUpdaters.Length-1];
+            for (int i = 1; i < pingPongUpdaters.Length; i++) {
+                pingPongUpdaters[i] = pingPongUpdaters[i - 1];
+            }
+            pingPongUpdaters[0] = temp;
+        }
+
+        private void Start() {
             if (computeShader == null) {
                 throw new System.InvalidOperationException("Compute shader not set!");
             }
@@ -32,24 +43,44 @@ namespace Yangrc.AtmosphereScattering {
             }
             _instance = this;
             AtmLutHelper.Init(computeShader);
-            updater = new ProgressiveLutUpdater(atmosphereConfig, lutConfig, this);
-            StartCoroutine(updater.UpdateRoutine());
+            for (int i = 0; i < pingPongUpdaters.Length; i++) {
+                pingPongUpdaters[i] = new ProgressiveLutUpdater(null, lutConfig, this);
+            }
+
+
+            KickOffUpdater(pingPongUpdaters[0]);
         }
 
+        private void KickOffUpdater(ProgressiveLutUpdater updater) {
+            updater.atmConfigToUse = atmosphereConfig;
+            StartCoroutine(updater.UpdateCoroutine());
+        }
+
+        int debugCounter = 0;
         private void Update() {
-            if (updater.isDone) {
-                if (forceRefresh) {
-                    //forceRefresh = false;
-                    StartCoroutine(updater.UpdateRoutine());
-                }
-                UpdateSkyboxMaterial();
+
+            if (!pingPongUpdaters[0].working) {
+                //Use the finished luts.
+                UpdateSkyboxMaterial(pingPongUpdaters[0]);
+
+                //Rotate to right.
+                RotatePingpongUpdater();
+
+                //Next updater.
+                KickOffUpdater(pingPongUpdaters[0]);
             }
         }
 
-        public void UpdateSkyboxMaterial() {
+        private void OnDestroy() {
+            for (int i = 0; i < pingPongUpdaters.Length; i++) {
+                pingPongUpdaters[i].Cleanup();
+            }
+        }
+
+        public void UpdateSkyboxMaterial(ProgressiveLutUpdater updater) {
             if (this.skyboxMaterial==null)
                 this.skyboxMaterial = new Material(Shader.Find("Skybox/AtmosphereScatteringPrecomputed"));
-            atmosphereConfig.Apply(skyboxMaterial);
+            updater.atmConfigUsedToUpdate.Apply(skyboxMaterial);  
             skyboxMaterial.SetTexture("_SingleRayleigh", updater.singleRayleigh);
             skyboxMaterial.SetTexture("_SingleMie", updater.singleMie);
             skyboxMaterial.SetTexture("_MultipleScattering", updater.multiScatteringCombine);

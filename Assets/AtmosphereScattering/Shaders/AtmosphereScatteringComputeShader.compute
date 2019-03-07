@@ -17,6 +17,8 @@ Helper functions. See https://ebruneton.github.io/precomputed_atmospheric_scatte
 #pragma kernel CalculateGroundIndirectIrradianceLUT
 #pragma kernel CombineGroundIrradianceLUT
 #pragma kernel CombineMultipleScatteringLUT
+#pragma kernel ClearCombineGroundIrradianceLUT
+#pragma kernel ClearCombineMultipleScatteringLUT
 /*
 Common parameters.
 */
@@ -256,6 +258,12 @@ void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : 
 	GroundIrradianceSumTarget[id.xy] += GroundIrradianceSumAdder[id.xy];
 }
 
+[numthreads(32, 32, 1)]
+void ClearCombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(32, 32, 1);
+	GroundIrradianceSumTarget[id.xy] = 0.0f;
+}
+
 /*
 ==========================================
 ||		Scattering	Combine				||
@@ -270,4 +278,10 @@ void CombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid 
 	id += _ThreadOffset * uint3(8, 8, 8);
 
 	ScatteringSumTarget[id.xyz] += ScatteringSumAdd[id.xyz];
+}
+[numthreads(8, 8, 8)]
+void ClearCombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
+
+	ScatteringSumTarget[id.xyz] = 0.0f;
 }

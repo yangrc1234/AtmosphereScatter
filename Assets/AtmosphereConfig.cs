@@ -6,9 +6,9 @@ namespace Yangrc.AtmosphereScattering {
     [CreateAssetMenu]
     public class AtmosphereConfig : ScriptableObject {
 
-        Vector3 OZoneConst = 6e-7f * new Vector3(3.426f, 8.298f, 0.356f);
-        Vector3 RayleighScatteringConst = 1e-6f * new Vector3(5.8f, 13.5f, 33.1f);
-        float MieScatteringConst = 2e-6f;
+        static readonly Vector3 OZoneConst = 6e-7f * new Vector3(3.426f, 8.298f, 0.356f);
+        static readonly Vector3 RayleighScatteringConst = 1e-6f * new Vector3(5.8f, 13.5f, 33.1f);
+        static readonly float MieScatteringConst = 2e-6f;
 
         private static class Keys {
             public static int atmosphere_top_radius = Shader.PropertyToID("atmosphere_top_radius");
@@ -67,5 +67,21 @@ namespace Yangrc.AtmosphereScattering {
         public float mie_phase_function_g = 0.95f;
         public float absorption_extinction = 1.0f;
         public float absorption_extinction_scale_height = 8000.0f;
+
+        public void CopyDataFrom(AtmosphereConfig config) {
+            this.AtmosphereDensity = config.AtmosphereDensity;
+            this.LightingScale = config.LightingScale;
+            this.atmosphere_top_radius = config.atmosphere_top_radius;
+            this.atmosphere_bot_radius = config.atmosphere_bot_radius;
+            this.atmosphere_sun_angular_radius = config.atmosphere_sun_angular_radius;
+            this.rayleigh_scattering = config.rayleigh_scattering;
+            this.rayleigh_scale_height = config.rayleigh_scale_height;
+            this.mie_scattering = config.mie_scattering;
+            this.mie_scale_height = config.mie_scale_height;
+            this.mie_phase_function_g = config.mie_phase_function_g;
+            this.absorption_extinction = config.absorption_extinction;
+            this.absorption_extinction_scale_height = config.absorption_extinction_scale_height;
+
     }
+}
 }
