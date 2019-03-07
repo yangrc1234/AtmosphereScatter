@@ -324,10 +324,10 @@ namespace Yangrc.AtmosphereScattering {
             float start,
             float end) {
             int xStart, xEnd;
-            NormalizeProgressPointer(start, end, lutConfig.transmittanceSize.x / 8, out xStart, out xEnd);
+            NormalizeProgressPointer(start, end, lutConfig.transmittanceSize.x / 32, out xStart, out xEnd);
             computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
             computeShader.SetTexture(CalculateTransmittanceLUT, "TransmittanceLUTResult", target);
-            computeShader.Dispatch(CalculateTransmittanceLUT, xEnd - xStart, lutConfig.transmittanceSize.y / 8, 1);
+            computeShader.Dispatch(CalculateTransmittanceLUT, xEnd - xStart, lutConfig.transmittanceSize.y / 32, 1);
         }
 
         public static void UpdateSingleRayleighMie(
@@ -358,12 +358,12 @@ namespace Yangrc.AtmosphereScattering {
             float end
             ) {
             int xStart, xEnd;
-            NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 8, out xStart, out xEnd);
+            NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 32, out xStart, out xEnd);
             computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
 
             computeShader.SetTexture(CalculateGroundDirectIrradianceLUT, "TransmittanceLUT", TransmittanceLUT);
             computeShader.SetTexture(CalculateGroundDirectIrradianceLUT, "GroundDirectIrradianceResult", target);
-            computeShader.Dispatch(CalculateGroundDirectIrradianceLUT, xEnd - xStart, lutConfig.irradianceSize.y / 8, 1);
+            computeShader.Dispatch(CalculateGroundDirectIrradianceLUT, xEnd - xStart, lutConfig.irradianceSize.y / 32, 1);
         }
 
         public static void UpdateGroundIrradiance(
@@ -377,7 +377,7 @@ namespace Yangrc.AtmosphereScattering {
             float end
             ) {
             int xStart, xEnd;
-            NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 8, out xStart, out xEnd);
+            NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 32, out xStart, out xEnd);
             computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
 
             computeShader.SetInt("ScatteringOrder", scatteringOrder);
@@ -385,7 +385,7 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.SetTexture(CalculateGroundIndirectIrradianceLUT, "SingleMieScatteringLUT", singleMie);
             computeShader.SetTexture(CalculateGroundIndirectIrradianceLUT, "MultipleScatteringLUT", multiScattering);
             computeShader.SetTexture(CalculateGroundIndirectIrradianceLUT, "GroundIndirectIrradianceResult", target);
-            computeShader.Dispatch(CalculateGroundIndirectIrradianceLUT, xEnd - xStart, lutConfig.irradianceSize.y / 8, 1);
+            computeShader.Dispatch(CalculateGroundIndirectIrradianceLUT, xEnd - xStart, lutConfig.irradianceSize.y / 32, 1);
         }
 
         public static void UpdateMultiScatteringDensity(
@@ -450,7 +450,7 @@ namespace Yangrc.AtmosphereScattering {
             ) {
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumTarget", target);
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumAdder", irradianceOfSingleOrder);
-            computeShader.Dispatch(SumGroundIrradianceLUT, lutConfig.irradianceSize.x / 8, lutConfig.irradianceSize.y / 8, 1);
+            computeShader.Dispatch(SumGroundIrradianceLUT, lutConfig.irradianceSize.x / 32, lutConfig.irradianceSize.y / 32, 1);
         }
     }
 

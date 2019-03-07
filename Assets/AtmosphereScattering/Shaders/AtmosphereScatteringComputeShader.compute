@@ -52,10 +52,10 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
 	return ComputeTransmittanceToTopAtmosphereBoundary(atmosphere, r, mu);
 }
 
-[numthreads(8, 8, 1)]
+[numthreads(32, 32, 1)]
 void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID)
 {
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(32, 32, 1);
 
 	uint w, h;
 	TransmittanceLUTResult.GetDimensions(w, h);
@@ -86,7 +86,7 @@ RWTexture3D<float3> SingleScatteringMieLUTResult;
 [numthreads(8, 8, 8)]
 void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID)
 {
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(8, 8, 8);
 
 	uint w, h, d; 
 	SingleScatteringRayleighLUTResult.GetDimensions(w, h, d);
@@ -125,7 +125,7 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
 [numthreads(8,8,8)]
 void CalculateMultipleScatteringDensityLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
 
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(8, 8, 8);
 
 	uint w, h, d;
 	MultipleScatteringDensityResult.GetDimensions(w, h, d);
@@ -190,9 +190,9 @@ IrradianceSpectrum ComputeDirectIrradianceTexture(
 	IN(vec2) frag_coord,
 	uint2 irrdiance_size);
 
-[numthreads(8, 8, 1)]
+[numthreads(32, 32, 1)]
 void CalculateGroundDirectIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(32, 32, 1);
 
 	uint w, h;
 	GroundDirectIrradianceResult.GetDimensions(w, h);
@@ -222,9 +222,9 @@ IrradianceSpectrum ComputeIndirectIrradianceTexture(
 	uint3 scattering_size,
 	IN(vec2) frag_coord, int scattering_order, uint2 irrdiance_size);
 
-[numthreads(8, 8, 1)]
+[numthreads(32, 32, 1)]
 void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(32, 32, 1);
 
 	uint w, h;
 	GroundIndirectIrradianceResult.GetDimensions(w, h);
@@ -249,9 +249,9 @@ void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 
 RWTexture2D<float3> GroundIrradianceSumTarget;
 RWTexture2D<float3> GroundIrradianceSumAdder;
 
-[numthreads(8, 8, 1)]
+[numthreads(32, 32, 1)]
 void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
-	id += _ThreadOffset * uint3(8, 8, 1);
+	id += _ThreadOffset * uint3(32, 32, 1);
 
 	GroundIrradianceSumTarget[id.xy] += GroundIrradianceSumAdder[id.xy];
 }
