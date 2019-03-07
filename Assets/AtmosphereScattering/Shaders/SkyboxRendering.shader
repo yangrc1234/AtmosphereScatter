@@ -152,7 +152,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						r, mu, mu_s,
 						ray_r_mu_intersects_ground);
 
-				return float4(_LightScale * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
+				return float4(_LightColor0.rgb * _LightScale * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
 			}
 			ENDCG
 		}
