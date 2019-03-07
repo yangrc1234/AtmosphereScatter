@@ -45,9 +45,9 @@
 // A unit direction vector in 3D (3 unitless values).
 #define Direction vec3
 // A vector of 3 luminance values.
-#define Luminance3 vec3
+#define Luminance3 half3
 // A vector of 3 illuminance values.
-#define Illuminance3 vec3
+#define Illuminance3 half3
 
 #define TransmittanceTexture sampler2D
 #define IrradianceTexture sampler2D
