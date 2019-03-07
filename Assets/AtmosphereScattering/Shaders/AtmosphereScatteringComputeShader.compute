@@ -52,10 +52,10 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
 	return ComputeTransmittanceToTopAtmosphereBoundary(atmosphere, r, mu);
 }
 
-[numthreads(1, 1, 1)]
-void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 1)]
+void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID)
 {
-	id += _ThreadOffset;
+	id += _ThreadOffset * uint3(8, 8, 1);
 
 	uint w, h;
 	TransmittanceLUTResult.GetDimensions(w, h);
@@ -83,12 +83,12 @@ void CalculateTransmittanceLUT(uint3 id : SV_DispatchThreadID)
 RWTexture3D<float3> SingleScatteringRayleighLUTResult;
 RWTexture3D<float3> SingleScatteringMieLUTResult;
 
-[numthreads(1, 1, 1)]
-void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 8)]
+void CalculateSingleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID)
 {
-	id += _ThreadOffset;
+	id += _ThreadOffset * uint3(8, 8, 1);
 
-	uint w, h, d;
+	uint w, h, d; 
 	SingleScatteringRayleighLUTResult.GetDimensions(w, h, d);
 	AtmosphereParameters atm = GetAtmParameters();
 
@@ -122,10 +122,10 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
 	uint2 irradiance_size,
 	IN(vec3) frag_coord, int scattering_order);
 
-[numthreads(1,1,1)]
-void CalculateMultipleScatteringDensityLUT(uint3 id : SV_DispatchThreadID) {
+[numthreads(8,8,8)]
+void CalculateMultipleScatteringDensityLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
 
-	id += _ThreadOffset;
+	id += _ThreadOffset * uint3(8, 8, 1);
 
 	uint w, h, d;
 	MultipleScatteringDensityResult.GetDimensions(w, h, d);
@@ -160,9 +160,9 @@ RadianceSpectrum ComputeMultipleScatteringTexture(
 	uint3 scattering_size,
 	IN(vec3) frag_coord);
 
-[numthreads(1, 1, 1)]
-void CalculateMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
-	id += _ThreadOffset;
+[numthreads(8, 8, 8)]
+void CalculateMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
 
 	uint w, h, d;
 	MultipleScatteringResult.GetDimensions(w, h, d);
@@ -190,9 +190,9 @@ IrradianceSpectrum ComputeDirectIrradianceTexture(
 	IN(vec2) frag_coord,
 	uint2 irrdiance_size);
 
-[numthreads(1, 1, 1)]
-void CalculateGroundDirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
-	id += _ThreadOffset;
+[numthreads(8, 8, 1)]
+void CalculateGroundDirectIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 1);
 
 	uint w, h;
 	GroundDirectIrradianceResult.GetDimensions(w, h);
@@ -222,9 +222,9 @@ IrradianceSpectrum ComputeIndirectIrradianceTexture(
 	uint3 scattering_size,
 	IN(vec2) frag_coord, int scattering_order, uint2 irrdiance_size);
 
-[numthreads(1, 1, 1)]
-void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
-	id += _ThreadOffset;
+[numthreads(8, 8, 1)]
+void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 1);
 
 	uint w, h;
 	GroundIndirectIrradianceResult.GetDimensions(w, h);
@@ -249,9 +249,9 @@ void CalculateGroundIndirectIrradianceLUT(uint3 id : SV_DispatchThreadID) {
 RWTexture2D<float3> GroundIrradianceSumTarget;
 RWTexture2D<float3> GroundIrradianceSumAdder;
 
-[numthreads(1, 1, 1)]
-void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID) {
-	id += _ThreadOffset;
+[numthreads(8, 8, 1)]
+void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 1);
 
 	GroundIrradianceSumTarget[id.xy] += GroundIrradianceSumAdder[id.xy];
 }
@@ -265,9 +265,9 @@ void CombineGroundIrradianceLUT(uint3 id : SV_DispatchThreadID) {
 RWTexture3D<float4> ScatteringSumTarget;
 RWTexture3D<float4> ScatteringSumAdd;
 
-[numthreads(1, 1, 1)]
-void CombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID) {
-	id += _ThreadOffset;
+[numthreads(8, 8, 8)]
+void CombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
 
 	ScatteringSumTarget[id.xyz] += ScatteringSumAdd[id.xyz];
 }
