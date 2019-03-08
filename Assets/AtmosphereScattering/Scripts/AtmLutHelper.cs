@@ -195,19 +195,25 @@ namespace Yangrc.AtmosphereScattering {
                 }
             }
             //All calculations are done.
-            //Release all temp textures. They won't be used in the future.
-            for (int i = 0; i < groundIrradianceTemp.Length; i++) {
-                if (groundIrradianceTemp[i] != null) {
-                    groundIrradianceTemp[i].Release();
-                    groundIrradianceTemp[i] = null;
-                }
-            }
-            for (int i = 0; i < multiScatteringTemp.Length; i++) {
-                if (multiScatteringTemp[i] != null) {
-                    multiScatteringTemp[i].Release();
-                    multiScatteringTemp[i] = null;
-                }
-            }
+
+            /*  DON"T RELEASE TEMP TEXTURES HERE, IT WILL CAUSE GRAPHICS GLITCH(FLASHING) WHEN RENDERING SKYBOX. I DON'T KNOW WHY.(2017.4.11f1)    */
+            /*  AND THAT GLITCH COST ME 4 HOURS TO FIND OUT, THANK YOU UNITY */
+            /*  I guess that after combine dispatch call, the process isn't finished immediately, if we release the textures right now, it will blow up. */
+            /*  but I tried to wait for a few frame(yield return null), still doesn't work. */
+            ////Release all temp textures. They won't be used in the future.
+            //for (int i = 0; i < groundIrradianceTemp.Length; i++) {
+            //    if (groundIrradianceTemp[i] != null) {
+            //        groundIrradianceTemp[i].Release();
+            //        groundIrradianceTemp[i] = null;
+            //    }
+            //}
+            //for (int i = 0; i < multiScatteringTemp.Length; i++) {
+            //    if (multiScatteringTemp[i] != null) {
+            //        multiScatteringTemp[i].Release();
+            //        multiScatteringTemp[i] = null;
+            //    }
+            //}
+
             //Done!
             working = false;
             yield break;
