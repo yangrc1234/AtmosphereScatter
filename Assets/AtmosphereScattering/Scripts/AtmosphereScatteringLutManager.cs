@@ -7,8 +7,6 @@ using UnityEngine;
 namespace Yangrc.AtmosphereScattering {
 
     public class AtmosphereScatteringLutManager : MonoBehaviour , ProgressiveLutUpdater.ITimeLogger{
-        public bool outputDebug  = false;
-        public bool forceRefresh;
         public AtmosphereScatteringLutManager instance {
             get {
                 return _instance;
@@ -18,6 +16,8 @@ namespace Yangrc.AtmosphereScattering {
 
         [SerializeField]
         private ComputeShader computeShader;
+        [SerializeField]
+        private bool outputDebug = false;
         public AtmLutGenerateConfig lutConfig;
         public AtmosphereConfig atmosphereConfig;
         public Material skyboxMaterial;
@@ -47,7 +47,6 @@ namespace Yangrc.AtmosphereScattering {
                 pingPongUpdaters[i] = new ProgressiveLutUpdater(null, lutConfig, this);
             }
 
-
             KickOffUpdater(pingPongUpdaters[0]);
         }
 
@@ -56,7 +55,6 @@ namespace Yangrc.AtmosphereScattering {
             StartCoroutine(updater.UpdateCoroutine());
         }
 
-        int debugCounter = 0;
         private void Update() {
 
             if (!pingPongUpdaters[0].working) {
