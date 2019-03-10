@@ -84,6 +84,7 @@ namespace Yangrc.AtmosphereScattering {
         public RenderTexture transmittance;
         public RenderTexture singleRayleigh, singleMie;
         public RenderTexture multiScatteringCombine, groundIrradianceCombine;
+        internal string name;
 
         public bool working { get; private set; }
 

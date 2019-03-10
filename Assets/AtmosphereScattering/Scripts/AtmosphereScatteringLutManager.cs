@@ -28,7 +28,7 @@ namespace Yangrc.AtmosphereScattering {
         //Shift all updater to one right.
         private void RotatePingpongUpdater() {
             var temp = pingPongUpdaters[pingPongUpdaters.Length-1];
-            for (int i = 1; i < pingPongUpdaters.Length; i++) {
+            for (int i = pingPongUpdaters.Length - 1; i > 0; i--) {
                 pingPongUpdaters[i] = pingPongUpdaters[i - 1];
             }
             pingPongUpdaters[0] = temp;
@@ -45,6 +45,7 @@ namespace Yangrc.AtmosphereScattering {
             AtmLutHelper.Init(computeShader);
             for (int i = 0; i < pingPongUpdaters.Length; i++) {
                 pingPongUpdaters[i] = new ProgressiveLutUpdater(null, lutConfig, this);
+                pingPongUpdaters[i].name = "Updater " + i;
             }
 
             KickOffUpdater(pingPongUpdaters[0]);
@@ -55,11 +56,13 @@ namespace Yangrc.AtmosphereScattering {
             StartCoroutine(updater.UpdateCoroutine());
         }
 
+        private float lerpValue = 0.0f;
         private void Update() {
-
             if (!pingPongUpdaters[0].working) {
                 //Use the finished luts.
-                UpdateSkyboxMaterial(pingPongUpdaters[0]);
+                UpdateSkyboxMaterial(pingPongUpdaters[0], pingPongUpdaters[1]);
+
+                lerpValue = 0.0f;
 
                 //Rotate to right.
                 RotatePingpongUpdater();
@@ -67,6 +70,15 @@ namespace Yangrc.AtmosphereScattering {
                 //Next updater.
                 KickOffUpdater(pingPongUpdaters[0]);
             }
+            UpdateLerpValue();
+        }
+
+        private void UpdateLerpValue() {
+            //We now require 19 frames to update
+            
+            lerpValue += 1.0f / 19.0f;
+            if (skyboxMaterial != null)
+                skyboxMaterial.SetFloat("_LerpValue", lerpValue);
         }
 
         private void OnDestroy() {
@@ -75,14 +87,18 @@ namespace Yangrc.AtmosphereScattering {
             }
         }
 
-        public void UpdateSkyboxMaterial(ProgressiveLutUpdater updater) {
+        public void UpdateSkyboxMaterial(ProgressiveLutUpdater updater, ProgressiveLutUpdater oldUpdater) {
             if (this.skyboxMaterial==null)
                 this.skyboxMaterial = new Material(Shader.Find("Skybox/AtmosphereScatteringPrecomputed"));
-            updater.atmConfigUsedToUpdate.Apply(skyboxMaterial);  
-            skyboxMaterial.SetTexture("_SingleRayleigh", updater.singleRayleigh);
-            skyboxMaterial.SetTexture("_SingleMie", updater.singleMie);
-            skyboxMaterial.SetTexture("_MultipleScattering", updater.multiScatteringCombine);
-            skyboxMaterial.SetTexture("_Transmittance", updater.transmittance); 
+            updater.atmConfigUsedToUpdate.Apply(skyboxMaterial);
+            skyboxMaterial.SetTexture("_SingleRayleigh_1", oldUpdater.singleRayleigh);
+            skyboxMaterial.SetTexture("_SingleMie_1", oldUpdater.singleMie);
+            skyboxMaterial.SetTexture("_SingleRayleigh_2", updater.singleRayleigh);
+            skyboxMaterial.SetTexture("_SingleMie_2", updater.singleMie);
+            skyboxMaterial.SetTexture("_MultipleScattering_1", oldUpdater.multiScatteringCombine);
+            skyboxMaterial.SetTexture("_MultipleScattering_2", updater.multiScatteringCombine);
+            skyboxMaterial.SetTexture("_Transmittance_1", oldUpdater.transmittance);
+            skyboxMaterial.SetTexture("_Transmittance_2", updater.transmittance);
             skyboxMaterial.SetVector("_ScatteringSize", (Vector3)lutConfig.scatteringSize);
             skyboxMaterial.SetVector("_TransmittanceSize", (Vector2)lutConfig.transmittanceSize);
             RenderSettings.skybox = this.skyboxMaterial;
