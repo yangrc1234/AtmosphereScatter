@@ -92,7 +92,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Number nu = dot(view_ray, sun_direction);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
-				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu);
+				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu) * ray_r_mu_intersects_ground ? 0.0f : 1.0f;
 				//return half4(transmittance, 1.0f);
 
 				float3 direct_sun_strength = 0.0f;
