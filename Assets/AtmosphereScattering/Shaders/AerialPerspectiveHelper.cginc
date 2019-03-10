@@ -3,18 +3,23 @@
 
 #include "Common.cginc"
 #include "TransmittanceHelper.cginc"
+#include "GroundHelper.cginc"
+#include "MultipleScatteringHelper.cginc"
+#include "SingleScatteringHelper.cginc"
 
 #define LERP_TEXTURE(dim, name) \
 sampler ## dim ## D name ## _1; \
 sampler ## dim ## D name ## _2; 
 
 LERP_TEXTURE(2, _Transmittance)
+LERP_TEXTURE(2, _GroundIrradiance)
 LERP_TEXTURE(3, _SingleRayleigh)
 LERP_TEXTURE(3, _SingleMie)
 LERP_TEXTURE(3, _MultipleScattering)
 
 float2 _TransmittanceSize;
 float3 _ScatteringSize;
+float2 _GroundIrradianceSize;
 
 uniform float _LerpValue;
 
@@ -50,6 +55,10 @@ float3 InternalGetMieLerped(AtmosphereParameters atm, float r, float mu, float m
 		MiePhaseFunction(atm.mie_phase_function_g, nu);
 }
 
+float3 InternalGetLerpedGroundIrradiance(AtmosphereParameters atm, float r, float mu, float mu_s) {
+	return lerp(GetIrradiance(atm, _GroundIrradiance_1, _GroundIrradianceSize, r, mu_s), GetIrradiance(atm, _GroundIrradiance_2, _GroundIrradianceSize, r, mu_s), _LerpValue);
+}
+
 float3 InternalGetMultipleLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
 	return
 		GetScatteringLerped(atm,
@@ -59,16 +68,16 @@ float3 InternalGetMultipleLerped(AtmosphereParameters atm, float r, float mu, fl
 			_ScatteringSize,
 			r, mu, mu_s,
 			ray_r_mu_intersects_ground);
-	
 }
 
 float3 GetTotalScatteringLerped(float r, float mu, float mu_s, float nu) {
 	AtmosphereParameters atm = GetAtmParameters();
 	bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
-	return
+	return 
 		InternalGetRayleighLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
 		+ InternalGetMieLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
 		+ InternalGetMultipleLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
 }
+
 #endif

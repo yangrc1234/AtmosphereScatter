@@ -48,6 +48,14 @@ namespace Yangrc.AtmosphereScattering {
                 pingPongUpdaters[i].name = "Updater " + i;
             }
 
+            //Quickly complete two set luts.
+            for (int i = 1; i <= 2; i++) {
+                pingPongUpdaters[i].atmConfigToUse = atmosphereConfig;
+                var t = pingPongUpdaters[i].UpdateCoroutine();
+                while (t.MoveNext()) ;
+            }
+            UpdateSkyboxMaterial(pingPongUpdaters[1], pingPongUpdaters[2]);
+
             KickOffUpdater(pingPongUpdaters[0]);
         }
 
@@ -99,7 +107,10 @@ namespace Yangrc.AtmosphereScattering {
             skyboxMaterial.SetTexture("_MultipleScattering_2", updater.multiScatteringCombine);
             skyboxMaterial.SetTexture("_Transmittance_1", oldUpdater.transmittance);
             skyboxMaterial.SetTexture("_Transmittance_2", updater.transmittance);
+            skyboxMaterial.SetTexture("_GroundIrradiance_1", oldUpdater.groundIrradianceCombine);
+            skyboxMaterial.SetTexture("_GroundIrradiance_2", updater.groundIrradianceCombine);
             skyboxMaterial.SetVector("_ScatteringSize", (Vector3)lutConfig.scatteringSize);
+            skyboxMaterial.SetVector("_GroundIrradianceSize", (Vector2)lutConfig.irradianceSize);
             skyboxMaterial.SetVector("_TransmittanceSize", (Vector2)lutConfig.transmittanceSize);
             RenderSettings.skybox = this.skyboxMaterial;
         }
