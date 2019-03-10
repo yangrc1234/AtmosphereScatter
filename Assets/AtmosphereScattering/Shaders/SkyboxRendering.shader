@@ -4,13 +4,6 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 {
 	Properties
 	{
-		_SingleRayleigh("SingleRayleigh", 3D) = "white" {}
-		_SingleMie("SingleMie", 3D) = "white" {}
-		_MultipleScattering("MultipleScattering", 3D) = "white"{}
-		_Transmittance("Transmittance", 2D) = "white"{}
-		_ScatteringSize("ScatteringSize", Vector) = (32.0, 32.0, 128.0, 0.0)
-		_TransmittanceSize("TransmittanceSize", Vector) = (512.0, 512.0, 0.0, 0.0)
-		_LightScale("LightScale", Float) = 12.0
 	}
 	SubShader
 	{
@@ -29,6 +22,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 			#include "UnityCG.cginc"
 			#include "Lighting.cginc"
 			#include "MultipleScatteringHelper.cginc"
+			#include "AerialPerspectiveHelper.cginc"
 			
 			struct appdata
 			{
@@ -52,12 +46,6 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				return o;
 			}
 			
-			sampler3D _SingleRayleigh;
-			sampler3D _SingleMie;
-			sampler3D _MultipleScattering;
-			sampler2D _Transmittance;
-			float3 _ScatteringSize;
-			float2 _TransmittanceSize;
 			float _LightScale;
 
 			RadianceSpectrum GetScattering(
@@ -104,22 +92,8 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Number nu = dot(view_ray, sun_direction);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
-				float3 testRayleigh, testMie;
-				//ComputeSingleScattering(
-				//	atm,
-				//	_Transmittance,
-				//	_TransmittanceSize,
-				//	r,
-				//	mu,
-				//	mu_s,
-				//	nu,
-				//	ray_r_mu_intersects_ground,
-				//	testRayleigh, testMie);
-				//return float4(testRayleigh + testMie, 1.0f);
-
-				float3 transmittance = ray_r_mu_intersects_ground ? 0.0f :
-					GetTransmittanceToTopAtmosphereBoundary(
-						atm, _Transmittance, _TransmittanceSize, r, mu);
+				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu);
+				//return half4(transmittance, 1.0f);
 
 				float3 direct_sun_strength = 0.0f;
 				{
@@ -129,30 +103,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 					}
 				}
 
-				float3 rayleigh =
-					GetScattering(atm,
-						_SingleRayleigh,
-						_ScatteringSize,
-						r, mu, mu_s,
-						ray_r_mu_intersects_ground) *
-					RayleighPhaseFunction(nu);
-
-				float3 mie = 
-					GetScattering(atm,
-						_SingleMie,
-						_ScatteringSize,
-						r, mu, mu_s,
-						ray_r_mu_intersects_ground) *
-					MiePhaseFunction(atm.mie_phase_function_g, nu);
-			
-				float3 multiple =
-					GetScattering(atm,
-						_MultipleScattering,
-						_ScatteringSize,
-						r, mu, mu_s,
-						ray_r_mu_intersects_ground);
-
-				return float4(_LightColor0.rgb * _LightScale * (direct_sun_strength + rayleigh + mie + multiple), 0.0f);
+				return float4(_LightColor0.rgb * _LightScale * (direct_sun_strength + GetTotalScatteringLerped(r, mu, mu_s, nu)), 0.0f);
 			}
 			ENDCG
 		}

@@ -200,11 +200,25 @@ RadianceSpectrum GetScattering(
 	IN(ScatteringTexture) scattering_texture,
 	uint3 texture_size,
 	Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
-	
-	) {
+
+) {
 	vec3 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
 		atmosphere, r, mu, mu_s, texture_size, ray_r_mu_intersects_ground);
 	return tex3Dlod(scattering_texture, float4(uvwz, 0.0)).rgb;
+}
+
+RadianceSpectrum GetScatteringLerped(
+	IN(AtmosphereParameters) atmosphere,
+	IN(ScatteringTexture) scattering_texture,
+	IN(ScatteringTexture) scattering_texture_2,
+	float lerpValue,
+	uint3 texture_size,
+	Length r, Number mu, Number mu_s, bool ray_r_mu_intersects_ground
+
+) {
+	vec3 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
+		atmosphere, r, mu, mu_s, texture_size, ray_r_mu_intersects_ground);
+	return lerp(tex3Dlod(scattering_texture, float4(uvwz, 0.0)).rgb, tex3Dlod(scattering_texture_2, float4(uvwz, 0.0)).rgb, lerpValue);
 }
 
 RadianceSpectrum GetScattering(
