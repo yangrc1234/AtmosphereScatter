@@ -292,13 +292,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e16dd2ddbdfa7ea4f87a3cfb032ffd0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  autoInit: 1
   computeShader: {fileID: 7200000, guid: 2d4396a54b390d742b84d4bb4a122e54, type: 3}
-  config: {fileID: 11400000, guid: 8e73e89daf00b8447b2410427953df25, type: 2}
+  outputDebug: 0
+  lutConfig:
+    transmittanceSize: {x: 512, y: 512}
+    scatteringSize: {x: 32, y: 32, z: 128}
+    irradianceSize: {x: 32, y: 32}
+  atmosphereConfig: {fileID: 11400000, guid: 8e73e89daf00b8447b2410427953df25, type: 2}
   skyboxMaterial: {fileID: 0}
-  transmittanceSize: {x: 512, y: 512}
-  scatteringSize: {x: 32, y: 32, z: 128}
-  irradianceSize: {x: 32, y: 32}
 --- !u!4 &297555712
 Transform:
   m_ObjectHideFlags: 0
