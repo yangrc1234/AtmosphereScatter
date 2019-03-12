@@ -11,23 +11,17 @@ void ComputeSingleScatteringIntegrand(
 	Length r, Number mu, Number mu_s, Number nu, Length d,
 	bool ray_r_mu_intersects_ground,
 	OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie) {
-	Length r_d = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
 
-	//Here we ignore azimuth, and calculate nu assuming all points are on the same plane.
+	Length r_d = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
 	Number mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
-	
 	DimensionlessSpectrum transmittance =
 		GetTransmittance(
 			atmosphere, transmittance_texture, texture_size, r, mu, d,
 			ray_r_mu_intersects_ground) *
 		GetTransmittanceToSun(
 			atmosphere, transmittance_texture, texture_size, r_d, mu_s_d);
-	rayleigh = transmittance * GetScaleHeight(
-		r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height
-	);
-	mie = transmittance * GetScaleHeight(
-		r_d - atmosphere.bottom_radius, atmosphere.mie_scale_height
-	);
+	rayleigh = transmittance * GetScaleHeight(r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height);
+	mie = transmittance * GetScaleHeight(r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height);
 }
 
 void ComputeSingleScattering(
@@ -40,6 +34,7 @@ void ComputeSingleScattering(
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
 	assert(mu_s >= -1.0 && mu_s <= 1.0);
+
 
 	// Number of intervals for the numerical integration.
 	const int SAMPLE_COUNT = 50;
@@ -190,12 +185,12 @@ void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
 	bool ray_r_mu_intersects_ground;
 	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, gl_frag_coord,
 		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
-	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
+	Number nu = GetNuFromMuMus(mu, mu_s);
 	ComputeSingleScattering(atmosphere, transmittance_texture, transmittance_size,
 		r, mu, mu_s, nu, ray_r_mu_intersects_ground, rayleigh, mie);
 }
 
-RadianceSpectrum GetScattering(
+RadianceSpectrum SampleScattering(
 	IN(AtmosphereParameters) atmosphere,
 	IN(ScatteringTexture) scattering_texture,
 	uint3 texture_size,
@@ -207,7 +202,7 @@ RadianceSpectrum GetScattering(
 	return tex3Dlod(scattering_texture, float4(uvwz, 0.0)).rgb;
 }
 
-RadianceSpectrum GetScatteringLerped(
+RadianceSpectrum SampleScatteringLerped(
 	IN(AtmosphereParameters) atmosphere,
 	IN(ScatteringTexture) scattering_texture,
 	IN(ScatteringTexture) scattering_texture_2,
@@ -227,25 +222,23 @@ RadianceSpectrum GetScattering(
 	IN(ReducedScatteringTexture) single_mie_scattering_texture,
 	IN(ScatteringTexture) multiple_scattering_texture,
 	uint3 texture_size,
-	Length r, Number mu, Number mu_s,
+	Length r, Number mu, Number mu_s, Number nu,
 	bool ray_r_mu_intersects_ground,
 	int scattering_order
 	) {
 
-	Number nu = mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
-
 	if (scattering_order == 1) {
-		IrradianceSpectrum rayleigh = GetScattering(
+		IrradianceSpectrum rayleigh = SampleScattering(
 			atmosphere, single_rayleigh_scattering_texture, texture_size, r, mu, mu_s,
 			ray_r_mu_intersects_ground);
-		IrradianceSpectrum mie = GetScattering(
+		IrradianceSpectrum mie = SampleScattering(
 			atmosphere, single_mie_scattering_texture, texture_size, r, mu, mu_s,
 			ray_r_mu_intersects_ground);
 		return rayleigh * RayleighPhaseFunction(nu) +
 			mie * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
 	}
 	else {
-		return GetScattering(
+		return SampleScattering(
 			atmosphere, multiple_scattering_texture, texture_size, r, mu, mu_s,
 			ray_r_mu_intersects_ground);
 	}

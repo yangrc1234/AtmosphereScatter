@@ -34,18 +34,18 @@ float3 GetTransmittanceToTopAtmosphereBoundaryLerped(float r, float mu) {
 
 float3 InternalGetRayleighLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
 
-	return  GetScatteringLerped(atm,
+	return  SampleScatteringLerped(atm,
 			_SingleRayleigh_1,
 			_SingleRayleigh_2,
 			_LerpValue,
 			_ScatteringSize,
 			r, mu, mu_s,
 			ray_r_mu_intersects_ground) *
-		RayleighPhaseFunction(nu);
+		AdhocRayleighPhaseFunction(nu);
 }
 
 float3 InternalGetMieLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
-	return GetScatteringLerped(atm,
+	return SampleScatteringLerped(atm,
 			_SingleMie_1,
 			_SingleMie_2,
 			_LerpValue,
@@ -61,7 +61,7 @@ float3 InternalGetLerpedGroundIrradiance(AtmosphereParameters atm, float r, floa
 
 float3 InternalGetMultipleLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
 	return
-		GetScatteringLerped(atm,
+		SampleScatteringLerped(atm,
 			_MultipleScattering_1,
 			_MultipleScattering_2,
 			_LerpValue,

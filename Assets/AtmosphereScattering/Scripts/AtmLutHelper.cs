@@ -44,7 +44,7 @@ namespace Yangrc.AtmosphereScattering {
                 this.groundIrradianceCombine,
                 this.multiScatteringCombine,
                 this.multiScatteringDensity,
-                
+
                 this.singleMie,
                 this.singleRayleigh,
                 this.transmittance,
@@ -88,11 +88,6 @@ namespace Yangrc.AtmosphereScattering {
 
         public bool working { get; private set; }
 
-        public const int SINGLE_RAYLEIGH_STEP = 1;
-        public const int MULTI_SCATTERING_DENSITY_STEP = 1;
-        public const int MULTI_SCATTERING_STEP = 1;
-        public const int MULTI_GROUND_IRRADIANCE_STEP = 1;
-
         private void Log(string t) {
             if (this.logger != null)
                 logger.Log(t);
@@ -124,13 +119,11 @@ namespace Yangrc.AtmosphereScattering {
                 }
 
                 //Update SingleRayleigh/Mie
-                for (int i = 0; i < SINGLE_RAYLEIGH_STEP; i++) {
-                    using (new ConvenientStopwatch("Single Rayleigh/Mie" + i, Log)) {
-                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
-                        AtmLutHelper.CreateSingleRayleighMieTexture(ref singleRayleigh, ref singleMie, lutConfig);
-                        AtmLutHelper.UpdateSingleRayleighMie(singleRayleigh, singleMie, transmittance, lutConfig, (float)i / SINGLE_RAYLEIGH_STEP, (float)(i + 1) / SINGLE_RAYLEIGH_STEP);
-                        yield return null;
-                    }
+                using (new ConvenientStopwatch("Single Rayleigh/Mie", Log)) {
+                    AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
+                    AtmLutHelper.CreateSingleRayleighMieTexture(ref singleRayleigh, ref singleMie, lutConfig);
+                    AtmLutHelper.UpdateSingleRayleighMie(singleRayleigh, singleMie, transmittance, lutConfig);
+                    yield return null;
                 }
 
                 AtmLutHelper.CreateMultiScatteringTexture(ref multiScatteringTemp[1], 1, lutConfig);    //This texture is not "Meaningful"(Since the 1-st order should be SingleRayleigh and SingleMie, and this tex won't be used in actual computation either), but we need to make an empty one to avoid shader error.
@@ -146,38 +139,26 @@ namespace Yangrc.AtmosphereScattering {
                 //Real game start.
                 AtmLutHelper.CreateMultiScatteringDensityTexture(ref multiScatteringDensity, lutConfig);
 
-                for (int i = 2; i <= 4; i++) {
-                    for (int j = 0; j < MULTI_SCATTERING_DENSITY_STEP; j++) {
-                        using (new ConvenientStopwatch("Multi Scattering Density" + i + j, Log)) {
-                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
-                            AtmLutHelper.UpdateMultiScatteringDensity(multiScatteringDensity, transmittance, singleRayleigh, singleMie, multiScatteringTemp[i - 1], groundIrradianceTemp[i - 2], i - 1, lutConfig,
-                                (float)j / MULTI_SCATTERING_DENSITY_STEP,
-                                (float)(j + 1) / MULTI_SCATTERING_DENSITY_STEP);
-                            yield return null;
-                        }
+                for (int i = 2; i <= k_MultiScatteringOrderDepth; i++) {
+                    using (new ConvenientStopwatch("Multi Scattering Density" + i, Log)) {
+                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
+                        AtmLutHelper.UpdateMultiScatteringDensity(multiScatteringDensity, transmittance, singleRayleigh, singleMie, multiScatteringTemp[i - 1], groundIrradianceTemp[i - 2], i - 1, lutConfig);
+                        yield return null;
                     }
 
                     AtmLutHelper.CreateMultiScatteringTexture(ref multiScatteringTemp[i], i, lutConfig);
 
-                    for (int j = 0; j < MULTI_SCATTERING_STEP; j++) {
-                        using (new ConvenientStopwatch("Multi Scattering " + i + j, Log)) {
-                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
-                            AtmLutHelper.UpdateMultiScatteringCombineDensity(multiScatteringTemp[i], transmittance, multiScatteringDensity, lutConfig,
-                                (float)j / MULTI_SCATTERING_STEP,
-                                (float)(j + 1) / MULTI_SCATTERING_STEP);
-                            yield return null;
-                        }
+                    using (new ConvenientStopwatch("Multi Scattering " + i, Log)) {
+                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
+                        AtmLutHelper.UpdateMultiScatteringCombineDensity(multiScatteringTemp[i], transmittance, multiScatteringDensity, lutConfig);
+                        yield return null;
                     }
 
                     AtmLutHelper.CreateGroundIrradianceTexture(ref groundIrradianceTemp[i], i, lutConfig);
-                    for (int j = 0; j < MULTI_GROUND_IRRADIANCE_STEP; j++) {
-                        using (new ConvenientStopwatch("Multi Scattering Ground Irradiance" + i + j, Log)) {
-                            AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
-                            AtmLutHelper.UpdateGroundIrradiance(groundIrradianceTemp[i], singleRayleigh, singleMie, multiScatteringTemp[i], i, lutConfig,
-                                (float)j / MULTI_GROUND_IRRADIANCE_STEP,
-                                (float)(j + 1) / MULTI_GROUND_IRRADIANCE_STEP);
-                            yield return null;
-                        }
+                    using (new ConvenientStopwatch("Multi Scattering Ground Irradiance" + i, Log)) {
+                        AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
+                        AtmLutHelper.UpdateGroundIrradiance(groundIrradianceTemp[i], singleRayleigh, singleMie, multiScatteringTemp[i], i, lutConfig);
+                        yield return null;
                     }
                 }
 
@@ -187,11 +168,11 @@ namespace Yangrc.AtmosphereScattering {
                 AtmLutHelper.ClearFinalCombinedIrradiance(groundIrradianceCombine, lutConfig);
 
                 AtmLutHelper.ApplyComputeShaderParams(lutConfig, atmConfigUsedToUpdate);
-                for (int i = 2; i <= 4; i++) {
+                for (int i = 2; i <= k_MultiScatteringOrderDepth; i++) {
                     AtmLutHelper.UpdateFinalCombinedMultiScatter(multiScatteringCombine, multiScatteringTemp[i], lutConfig);
                 }
 
-                for (int i = 0; i <= 4; i++) {
+                for (int i = 0; i <= k_MultiScatteringOrderDepth; i++) {
                     AtmLutHelper.UpdateFinalCombinedIrradiance(groundIrradianceCombine, groundIrradianceTemp[i], lutConfig);
                 }
             }
@@ -249,7 +230,7 @@ namespace Yangrc.AtmosphereScattering {
         string name;
         public void Dispose() {
             var timeSpan = HighResolutionDateTime.UtcNow - start;
-            if (Log!=null)
+            if (Log != null)
                 Log(name + ":" + timeSpan.TotalMilliseconds);
         }
     }
@@ -373,8 +354,9 @@ namespace Yangrc.AtmosphereScattering {
         public static void UpdateTransmittance(
             RenderTexture target,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end) {
+            float start = 0.0f,
+            float end = 1.0f
+            ) {
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.transmittanceSize.x / 32, out xStart, out xEnd);
             computeShader.SetInts("_ThreadOffset", xStart, 0, 0);
@@ -387,8 +369,8 @@ namespace Yangrc.AtmosphereScattering {
             RenderTexture mietarget,
             RenderTexture TransmittanceLUT,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end
+            float start = 0.0f,
+            float end = 1.0f
             ) {
 
             int xStart, xEnd;
@@ -406,8 +388,8 @@ namespace Yangrc.AtmosphereScattering {
             RenderTexture target,
             RenderTexture TransmittanceLUT,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end
+            float start = 0.0f,
+            float end = 1.0f
             ) {
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 32, out xStart, out xEnd);
@@ -425,8 +407,8 @@ namespace Yangrc.AtmosphereScattering {
             RenderTexture multiScattering,
             int scatteringOrder,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end
+            float start = 0.0f,
+            float end = 1.0f
             ) {
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.irradianceSize.x / 32, out xStart, out xEnd);
@@ -449,8 +431,8 @@ namespace Yangrc.AtmosphereScattering {
             RenderTexture GroundDirectIrradianceLUT,
             int scatteringOrder,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end
+            float start = 0.0f,
+            float end = 1.0f
             ) {
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.scatteringSize.x / 8, out xStart, out xEnd);
@@ -472,8 +454,8 @@ namespace Yangrc.AtmosphereScattering {
             RenderTexture TransmittanceLUT,
             RenderTexture multipleScatteringDensity,
             AtmLutGenerateConfig lutConfig,
-            float start,
-            float end
+            float start = 0.0f,
+            float end = 1.0f
             ) {
             int xStart, xEnd;
             NormalizeProgressPointer(start, end, lutConfig.scatteringSize.x / 8, out xStart, out xEnd);

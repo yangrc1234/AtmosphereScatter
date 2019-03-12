@@ -203,7 +203,9 @@ Length DistanceToNearestAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,
 	}
 }
 
-
+Number GetNuFromMuMus(float mu, float mu_s) {
+	return /*cos(a-b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
+}
 
 /*
 Pass in variables.
