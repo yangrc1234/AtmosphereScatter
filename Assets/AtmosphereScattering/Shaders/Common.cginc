@@ -134,7 +134,7 @@ AtmosphereParameters GetAtmosphereStruct(
 
 	result.solar_irradiance = 1.0f;
 	result.mu_s_min = -0.2f;
-	result.ground_albedo = float3(0.6, 0.5, 0.5);
+	result.ground_albedo = float3(0.1, 0.1, 0.1);
 	return result;
 }
 
