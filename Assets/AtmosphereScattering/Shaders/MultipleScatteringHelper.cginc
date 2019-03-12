@@ -20,7 +20,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 	uint3 scattering_size,
 	IN(IrradianceTexture) irradiance_texture,
 	uint2 irradiance_size,
-	Length r, Number mu, Number mu_s, int scattering_order) {
+	Length r, Number mu, Number mu_s, Number nu, int scattering_order) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
 	assert(mu_s >= -1.0 && mu_s <= 1.0);
@@ -32,10 +32,9 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 	// the view-sun angle is nu. The goal is to simplify computations below.
 	vec3 zenith_direction = vec3(0.0, 0.0, 1.0);
 	vec3 omega = vec3(sqrt(1.0 - mu * mu), 0.0, mu);
-	//Number sun_dir_x = omega.x == 0.0 ? 0.0 : (nu - mu * mu_s) / omega.x;
-	//Number sun_dir_y = sqrt(max(1.0 - sun_dir_x * sun_dir_x - mu_s * mu_s, 0.0));
-	//vec3 omega_s = vec3(sun_dir_x, sun_dir_y, mu_s);
-	vec3 omega_s = vec3(sqrt(1.0 - mu_s * mu_s), 0.0, mu_s);
+	Number sun_dir_x = omega.x == 0.0 ? 0.0 : (nu - mu * mu_s) / omega.x;
+	Number sun_dir_y = sqrt(max(1.0 - sun_dir_x * sun_dir_x - mu_s * mu_s, 0.0));
+	vec3 omega_s = vec3(sun_dir_x, sun_dir_y, mu_s);
 
 	const int SAMPLE_COUNT = 16;
 	const Angle dphi = pi / Number(SAMPLE_COUNT);
@@ -78,7 +77,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 			RadianceSpectrum incident_radiance = RadianceSpectrum(0.0f, 0.0f, 0.0f);
 			incident_radiance += GetScattering(atmosphere,
 				single_rayleigh_scattering_texture, single_mie_scattering_texture,
-				multiple_scattering_texture, scattering_size, r, omega_i.z, mu_s,
+				multiple_scattering_texture, scattering_size, r, omega_i.z, mu_s, nu1,
 				ray_r_theta_intersects_ground, scattering_order - 1);
 
 			// and of the contribution from the light paths with n-1 bounces and whose
@@ -120,13 +119,11 @@ RadianceSpectrum ComputeMultipleScattering(
 	uint2 transmittance_size,
 	IN(ScatteringDensityTexture) scattering_density_texture,
 	uint3 scattering_size,
-	Length r, Number mu, Number mu_s,
+	Length r, Number mu, Number mu_s, Number nu,
 	bool ray_r_mu_intersects_ground) {
 	assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
 	assert(mu >= -1.0 && mu <= 1.0);
 	assert(mu_s >= -1.0 && mu_s <= 1.0);
-
-	Number nu = /*cos(a+b), where cos(a) == mu, cos(b) == mu_s*/ mu * mu_s + (1 - mu * mu) * (1 - mu_s * mu_s);
 
 	// Number of intervals for the numerical integration.
 	const int SAMPLE_COUNT = 50;
@@ -150,7 +147,7 @@ RadianceSpectrum ComputeMultipleScattering(
 
 		// The Rayleigh and Mie multiple scattering at the current sample point.
 		RadianceSpectrum rayleigh_mie_i =
-			GetScattering(
+			SampleScattering(
 				atmosphere, scattering_density_texture, scattering_size, r_i, mu_i, mu_s_i,
 				ray_r_mu_intersects_ground) *
 			GetTransmittance(
@@ -178,12 +175,15 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
 	Length r;
 	Number mu;
 	Number mu_s;
+	Number nu;
+
 	bool ray_r_mu_intersects_ground;
 	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, frag_coord,
 		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	nu = GetNuFromMuMus(mu, mu_s);
 	return ComputeScatteringDensity(atmosphere, transmittance_texture, transmittance_size,
 		single_rayleigh_scattering_texture, single_mie_scattering_texture,
-		multiple_scattering_texture, scattering_size, irradiance_texture, irradiance_size, r, mu, mu_s, 
+		multiple_scattering_texture, scattering_size, irradiance_texture, irradiance_size, r, mu, mu_s, nu,
 		scattering_order);
 }
 
@@ -197,11 +197,13 @@ RadianceSpectrum ComputeMultipleScatteringTexture(
 	Length r;
 	Number mu;
 	Number mu_s;
+	Number nu;
 	bool ray_r_mu_intersects_ground;
 	GetRMuMuSNuFromScatteringTextureUvwz(atmosphere, frag_coord,
 		r, mu, mu_s, ray_r_mu_intersects_ground, scattering_size);
+	nu = GetNuFromMuMus(mu, mu_s);
 	return ComputeMultipleScattering(atmosphere, transmittance_texture, transmittance_size,
-		scattering_density_texture, scattering_size, r, mu, mu_s,
+		scattering_density_texture, scattering_size, r, mu, mu_s, nu,
 		ray_r_mu_intersects_ground);
 }
 #endif

@@ -51,9 +51,10 @@ IrradianceSpectrum ComputeIndirectIrradiance(
 				vec3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
 			SolidAngle domega = (dtheta / rad) * (dphi / rad) * sin(theta) ;
 
+			Number nu = dot(omega, omega_s);
 			result += GetScattering(atmosphere, single_rayleigh_scattering_texture,
 				single_mie_scattering_texture, multiple_scattering_texture, scattering_size,
-				r, omega.z, mu_s, false /* ray_r_theta_intersects_ground */,
+				r, omega.z, mu_s, nu, false /* ray_r_theta_intersects_ground */,
 				scattering_order) *
 				omega.z * domega;
 		}
