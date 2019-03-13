@@ -58,7 +58,7 @@ namespace Yangrc.AtmosphereScattering {
         public float LightingScale = 2.0f * 3.1415926f;
         public float atmosphere_top_radius = 6.36e6f + 6e4f;
         public float atmosphere_bot_radius = 6.36e6f;
-        public float atmosphere_sun_angular_radius = 0.025f;
+        public float atmosphere_sun_angular_radius = 0.0087f;
         public float rayleigh_scattering = 1.0f;
         public float rayleigh_scale_height = 8000.0f;
         public float mie_scattering = 1.0f;

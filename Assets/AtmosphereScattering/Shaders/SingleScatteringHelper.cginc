@@ -140,21 +140,20 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		Length d_min = r - atmosphere.bottom_radius;
 		Length d_max = rho;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
-			1.0 - 2.0 * uvwz.y, scattering_size.y / 2); 
-		mu = d == 0.0 ? Number(-1.0) :
+			1.0 - 2.0 * uvwz.y, scattering_size.y / 2);
+		mu = d == 0.0 * m ? Number(-1.0) :
 			ClampCosine(-(rho * rho + d * d) / (2.0 * r * d));
 		ray_r_mu_intersects_ground = true;
-	} 
+	}
 	else {
 		// Distance to the top atmosphere boundary for the ray (r,mu), and its
 		// minimum and maximum values over all mu - obtained for (r,1) and
 		// (r,mu_horizon) - from which we can recover mu:
-		
 		Length d_min = atmosphere.top_radius - r;
 		Length d_max = rho + H;
 		Length d = d_min + (d_max - d_min) * GetUnitRangeFromTextureCoord(
 			2.0 * uvwz.y - 1.0, scattering_size.y / 2);
-		mu = d == 0.0 ? Number(1.0) :
+		mu = d == 0.0 * m ? Number(1.0) :
 			ClampCosine((H * H - rho * rho - d * d) / (2.0 * r * d));
 		ray_r_mu_intersects_ground = false;
 	}
@@ -167,7 +166,7 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
 		-2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
 	Number a = (A - x_mu_s * A) / (1.0 + x_mu_s * A);
 	Length d = d_min + min(a, A) * (d_max - d_min);
-	mu_s = d == 0.0 ? Number(1.0) :
+	mu_s = d == 0.0 * m ? Number(1.0) :
 		ClampCosine((H * H - d * d) / (2.0 * atmosphere.bottom_radius * d));
 }
 

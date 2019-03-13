@@ -34,6 +34,7 @@ public class CameraControl : MonoBehaviour {
 
             currentPitch -= mouseDelta.y * rotationSpeed;
             currentYaw += mouseDelta.x * rotationSpeed;
+            currentPitch = Mathf.Max(0, currentPitch);
 
             var newRotation = Quaternion.Euler(currentPitch, currentYaw, 0.0f);
 

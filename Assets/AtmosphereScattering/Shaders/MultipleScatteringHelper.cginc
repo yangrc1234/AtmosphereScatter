@@ -26,6 +26,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 	assert(mu_s >= -1.0 && mu_s <= 1.0);
 	assert(scattering_order >= 2);
 
+
 	// Compute unit direction vectors for the zenith, the view direction omega and
 	// and the sun direction omega_s, such that the cosine of the view-zenith
 	// angle is mu, the cosine of the sun-zenith angle is mu_s, and the cosine of
@@ -52,7 +53,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 
 		// The distance and transmittance to the ground only depend on theta, so we
 		// can compute them in the outer loop for efficiency.
-		Length distance_to_ground = 0.0 ;
+		Length distance_to_ground = 0.0 * m;
 		DimensionlessSpectrum transmittance_to_ground = DimensionlessSpectrum(0.0, 0.0, 0.0);
 		DimensionlessSpectrum ground_albedo = DimensionlessSpectrum(0.0, 0.0, 0.0);
 		if (ray_r_theta_intersects_ground) {
@@ -74,8 +75,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
 			// the sum of a term given by the precomputed scattering texture for the
 			// (n-1)-th order:
 			Number nu1 = dot(omega_s, omega_i);
-			RadianceSpectrum incident_radiance = RadianceSpectrum(0.0f, 0.0f, 0.0f);
-			incident_radiance += GetScattering(atmosphere,
+			RadianceSpectrum incident_radiance = GetScattering(atmosphere,
 				single_rayleigh_scattering_texture, single_mie_scattering_texture,
 				multiple_scattering_texture, scattering_size, r, omega_i.z, mu_s, nu1,
 				ray_r_theta_intersects_ground, scattering_order - 1);
