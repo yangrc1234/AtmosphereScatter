@@ -92,9 +92,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				Number nu = dot(view_ray, sun_direction);
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
-				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu) * ray_r_mu_intersects_ground ? 0.0f : 1.0f;
-				//return half4(transmittance, 1.0f);
-
+				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu) * (ray_r_mu_intersects_ground ? 0.0f : 1.0f);
 				float3 direct_sun_strength = 0.0f;
 				{
 					float cos_sunedge = cos(atm.sun_angular_radius);
@@ -102,8 +100,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						direct_sun_strength = transmittance * (nu - cos_sunedge) / (1.0f - cos_sunedge);
 					}
 				}
-
-				return float4(_LightColor0.rgb * _LightScale * (direct_sun_strength + GetTotalScatteringLerped(r, mu, mu_s, nu)), 0.0f);
+				return half4( _LightScale * (direct_sun_strength + GetTotalScatteringLerped(r, mu, mu_s, nu)), 0.0f);
 			}
 			ENDCG
 		}

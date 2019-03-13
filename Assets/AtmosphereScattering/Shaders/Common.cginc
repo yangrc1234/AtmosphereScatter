@@ -193,6 +193,10 @@ Number GetScaleHeight(Length altitude, Length scale_height) {
 	return exp(-altitude / scale_height);
 }
 
+vec2 GetScaleHeight(Length altitude, vec2 scale_height_rayleigh_mie) {
+	return exp(-vec2(altitude, altitude) / scale_height_rayleigh_mie);
+}
+
 Length DistanceToNearestAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,
 	Length r, Number mu, bool ray_r_mu_intersects_ground) {
 	if (ray_r_mu_intersects_ground) {
