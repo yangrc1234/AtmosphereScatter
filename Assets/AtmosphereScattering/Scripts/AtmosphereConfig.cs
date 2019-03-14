@@ -26,18 +26,18 @@ namespace Yangrc.AtmosphereScattering {
         }
 
         public void Apply(Material mat) {
-            mat.SetFloat(Keys.atmosphere_top_radius, atmosphere_top_radius);
-            mat.SetFloat(Keys.atmosphere_bot_radius, atmosphere_bot_radius);
-            mat.SetFloat(Keys.atmosphere_sun_angular_radius, atmosphere_sun_angular_radius);
-            mat.SetVector(Keys.rayleigh_scattering, AtmosphereDensity  * rayleigh_scattering * RayleighScatteringConst);
-            mat.SetFloat(Keys.rayleigh_scale_height, rayleigh_scale_height);
-            mat.SetFloat(Keys.mie_scattering, AtmosphereDensity  * mie_scattering * MieScatteringConst);
-            mat.SetFloat(Keys.mie_extinction, AtmosphereDensity  * mie_scattering * 1.1f * MieScatteringConst);
-            mat.SetFloat(Keys.mie_scale_height, mie_scale_height);
-            mat.SetFloat(Keys.mie_phase_function_g, mie_phase_function_g);
-            mat.SetVector(Keys.absorption_extinction, AtmosphereDensity * ozone_extinction * OZoneConst);
-            mat.SetFloat(Keys.absorption_extinction_scale_height, ozone_scale_height);
-            mat.SetFloat(Keys.lightingScale, LightingScale);
+            Shader.SetGlobalFloat(Keys.atmosphere_top_radius, atmosphere_top_radius);
+            Shader.SetGlobalFloat(Keys.atmosphere_bot_radius, atmosphere_bot_radius);
+            Shader.SetGlobalFloat(Keys.atmosphere_sun_angular_radius, atmosphere_sun_angular_radius);
+            Shader.SetGlobalVector(Keys.rayleigh_scattering, AtmosphereDensity  * rayleigh_scattering * RayleighScatteringConst);
+            Shader.SetGlobalFloat(Keys.rayleigh_scale_height, rayleigh_scale_height);
+            Shader.SetGlobalFloat(Keys.mie_scattering, AtmosphereDensity  * mie_scattering * MieScatteringConst);
+            Shader.SetGlobalFloat(Keys.mie_extinction, AtmosphereDensity  * mie_scattering * 1.1f * MieScatteringConst);
+            Shader.SetGlobalFloat(Keys.mie_scale_height, mie_scale_height);
+            Shader.SetGlobalFloat(Keys.mie_phase_function_g, mie_phase_function_g);
+            Shader.SetGlobalVector(Keys.absorption_extinction, AtmosphereDensity * ozone_extinction * OZoneConst);
+            Shader.SetGlobalFloat(Keys.absorption_extinction_scale_height, ozone_scale_height);
+            Shader.SetGlobalFloat(Keys.lightingScale, LightingScale);
         }
 
         public void Apply(ComputeShader shader) {

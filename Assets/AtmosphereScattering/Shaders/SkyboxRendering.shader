@@ -46,7 +46,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				return o;
 			}
 			
-			float _LightScale;
+			float _LightScale; 
 
 			RadianceSpectrum GetScattering(
 				IN(AtmosphereParameters) atmosphere,
@@ -64,7 +64,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie);
 
 			half4 frag (v2f i) : SV_Target
-			{
+			{ 
 				i.worldPos /= i.worldPos.w;
 				float3 view_ray = normalize(i.worldPos.xyz - _WorldSpaceCameraPos);
 				float3 sun_direction = normalize(_WorldSpaceLightPos0.xyz);

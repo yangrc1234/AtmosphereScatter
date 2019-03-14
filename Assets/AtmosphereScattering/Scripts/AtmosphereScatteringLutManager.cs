@@ -86,7 +86,7 @@ namespace Yangrc.AtmosphereScattering {
             
             lerpValue += 1.0f / 19.0f;
             if (skyboxMaterial != null)
-                skyboxMaterial.SetFloat("_LerpValue", lerpValue);
+                Shader.SetGlobalFloat("_LerpValue", lerpValue);
         }
 
         private void OnDestroy() {
@@ -99,19 +99,19 @@ namespace Yangrc.AtmosphereScattering {
             if (this.skyboxMaterial==null)
                 this.skyboxMaterial = new Material(Shader.Find("Skybox/AtmosphereScatteringPrecomputed"));
             updater.atmConfigUsedToUpdate.Apply(skyboxMaterial);
-            skyboxMaterial.SetTexture("_SingleRayleigh_1", oldUpdater.singleRayleigh);
-            skyboxMaterial.SetTexture("_SingleMie_1", oldUpdater.singleMie);
-            skyboxMaterial.SetTexture("_SingleRayleigh_2", updater.singleRayleigh);
-            skyboxMaterial.SetTexture("_SingleMie_2", updater.singleMie);
-            skyboxMaterial.SetTexture("_MultipleScattering_1", oldUpdater.multiScatteringCombine);
-            skyboxMaterial.SetTexture("_MultipleScattering_2", updater.multiScatteringCombine);
-            skyboxMaterial.SetTexture("_Transmittance_1", oldUpdater.transmittance);
-            skyboxMaterial.SetTexture("_Transmittance_2", updater.transmittance);
-            skyboxMaterial.SetTexture("_GroundIrradiance_1", oldUpdater.groundIrradianceCombine);
-            skyboxMaterial.SetTexture("_GroundIrradiance_2", updater.groundIrradianceCombine);
-            skyboxMaterial.SetVector("_ScatteringSize", (Vector3)lutConfig.scatteringSize);
-            skyboxMaterial.SetVector("_GroundIrradianceSize", (Vector2)lutConfig.irradianceSize);
-            skyboxMaterial.SetVector("_TransmittanceSize", (Vector2)lutConfig.transmittanceSize);
+            Shader.SetGlobalTexture("_SingleRayleigh_1", oldUpdater.singleRayleigh);
+            Shader.SetGlobalTexture("_SingleMie_1", oldUpdater.singleMie);
+            Shader.SetGlobalTexture("_SingleRayleigh_2", updater.singleRayleigh);
+            Shader.SetGlobalTexture("_SingleMie_2", updater.singleMie);
+            Shader.SetGlobalTexture("_MultipleScattering_1", oldUpdater.multiScatteringCombine);
+            Shader.SetGlobalTexture("_MultipleScattering_2", updater.multiScatteringCombine);
+            Shader.SetGlobalTexture("_Transmittance_1", oldUpdater.transmittance);
+            Shader.SetGlobalTexture("_Transmittance_2", updater.transmittance);
+            Shader.SetGlobalTexture("_GroundIrradiance_1", oldUpdater.groundIrradianceCombine);
+            Shader.SetGlobalTexture("_GroundIrradiance_2", updater.groundIrradianceCombine);
+            Shader.SetGlobalVector("_ScatteringSize", (Vector3)lutConfig.scatteringSize);
+            Shader.SetGlobalVector("_GroundIrradianceSize", (Vector2)lutConfig.irradianceSize);
+            Shader.SetGlobalVector("_TransmittanceSize", (Vector2)lutConfig.transmittanceSize);
             RenderSettings.skybox = this.skyboxMaterial;
         }
 

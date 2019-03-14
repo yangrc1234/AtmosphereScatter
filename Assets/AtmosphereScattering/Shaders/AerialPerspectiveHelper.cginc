@@ -23,13 +23,39 @@ float2 _GroundIrradianceSize;
 
 uniform float _LerpValue;
 
-float3 GetTransmittanceToTopAtmosphereBoundaryLerped(float r, float mu) {
-	float3 lerp1 = GetTransmittanceToTopAtmosphereBoundary(
-		GetAtmParameters(), _Transmittance_1, _TransmittanceSize, r, mu);
-	float3 lerp2 = GetTransmittanceToTopAtmosphereBoundary(
-		GetAtmParameters(), _Transmittance_2, _TransmittanceSize, r, mu);
+float3 GetTransmittanceLerped(float r, float mu, float d, bool intersect_ground) {
+	AtmosphereParameters atm = GetAtmParameters();
+	float3 lerp1 = GetTransmittance(
+		atm, _Transmittance_1, _TransmittanceSize, r, mu, d, intersect_ground);
+	float3 lerp2 = GetTransmittance(
+		atm, _Transmittance_2, _TransmittanceSize, r, mu, d, intersect_ground);
 
 	return lerp(lerp1, lerp2, _LerpValue);
+}
+
+float3 GetTransmittanceToTopAtmosphereBoundaryLerped(float r, float mu) {
+	AtmosphereParameters atm = GetAtmParameters();
+	float3 lerp1 = GetTransmittanceToTopAtmosphereBoundary(
+		atm, _Transmittance_1, _TransmittanceSize, r, mu);
+	float3 lerp2 = GetTransmittanceToTopAtmosphereBoundary(
+		atm, _Transmittance_2, _TransmittanceSize, r, mu);
+
+	return lerp(lerp1, lerp2, _LerpValue);
+}
+
+void CalculateRMuMusFromPosViewdir(AtmosphereParameters atm, float3 pos, float3 view_ray, float3 sun_direction, OUT(float) r, OUT(float) mu, OUT(float) mu_s, OUT(float) nu) {
+	float3 camera = pos + float3(0, atm.bottom_radius, 0);
+	r = length(camera);
+	float rmu = dot(camera, view_ray);
+	mu = rmu / r;
+	mu_s = dot(camera, sun_direction) / r;
+	nu = dot(view_ray, sun_direction);
+}
+
+void CalculateRMuMusForDistancePoint(Length r, Number mu, Number mu_s, float nu, Number d, OUT(Length) r_d, OUT(Number) mu_d, OUT(Number) mu_s_d) {
+	r_d = sqrt(d * d + 2.0 * r * mu * d + r * r);
+	mu_d = ClampCosine((r * mu + d) / r_d);
+	mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
 }
 
 float3 InternalGetRayleighLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
@@ -41,7 +67,7 @@ float3 InternalGetRayleighLerped(AtmosphereParameters atm, float r, float mu, fl
 			_ScatteringSize,
 			r, mu, mu_s,
 			ray_r_mu_intersects_ground) *
-		AdhocRayleighPhaseFunction(nu);
+		RayleighPhaseFunction(nu);
 }
 
 float3 InternalGetMieLerped(AtmosphereParameters atm, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
