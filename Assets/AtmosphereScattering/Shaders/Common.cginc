@@ -174,6 +174,22 @@ Length DistanceToBottomAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,
 }
 
 bool RayIntersectsGround(IN(AtmosphereParameters) atmosphere,
+	Length r, Number mu, OUT(Length) d_1, OUT(Length) d_2) {
+	assert(r >= atmosphere.bottom_radius);
+	assert(mu >= -1.0 && mu <= 1.0);
+	d_1 = 0.0;
+	d_2 = 0.0;
+	float discriminant = 4 * r * r * (mu * mu - 1.0) +
+		4 * atmosphere.bottom_radius * atmosphere.bottom_radius;
+	if (discriminant >= 0.0f) {
+		float sqDis = sqrt(discriminant);
+		d_1 = (-2.0f * r * mu - sqDis) / 2.0f;
+		d_2 = (-2.0f * r * mu + sqDis) / 2.0f;
+	}
+	return mu < 0.0 && discriminant >= 0.0;
+}
+
+bool RayIntersectsGround(IN(AtmosphereParameters) atmosphere,
 	Length r, Number mu) {
 	assert(r >= atmosphere.bottom_radius);
 	assert(mu >= -1.0 && mu <= 1.0);

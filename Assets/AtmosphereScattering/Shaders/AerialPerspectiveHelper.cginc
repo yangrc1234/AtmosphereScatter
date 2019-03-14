@@ -45,15 +45,17 @@ float3 GetTransmittanceToTopAtmosphereBoundaryLerped(float r, float mu) {
 
 void CalculateRMuMusFromPosViewdir(AtmosphereParameters atm, float3 pos, float3 view_ray, float3 sun_direction, OUT(float) r, OUT(float) mu, OUT(float) mu_s, OUT(float) nu) {
 	float3 camera = pos + float3(0, atm.bottom_radius, 0);
-	r = length(camera);
+	r = max(atm.bottom_radius + 0.5f, length(camera));
 	float rmu = dot(camera, view_ray);
 	mu = rmu / r;
 	mu_s = dot(camera, sun_direction) / r;
 	nu = dot(view_ray, sun_direction);
 }
 
-void CalculateRMuMusForDistancePoint(Length r, Number mu, Number mu_s, float nu, Number d, OUT(Length) r_d, OUT(Number) mu_d, OUT(Number) mu_s_d) {
-	r_d = sqrt(d * d + 2.0 * r * mu * d + r * r);
+void CalculateRMuMusForDistancePoint(AtmosphereParameters atm, Length r, Number mu, Number mu_s, float nu, Number d, OUT(Length) r_d, OUT(Number) mu_d, OUT(Number) mu_s_d) {
+
+	r_d = ClampRadius(atm, sqrt(d * d + 2.0 * r * mu * d + r * r));
+	r_d = max(atm.bottom_radius + 0.5f, r_d);
 	mu_d = ClampCosine((r * mu + d) / r_d);
 	mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
 }
@@ -96,14 +98,26 @@ float3 InternalGetMultipleLerped(AtmosphereParameters atm, float r, float mu, fl
 			ray_r_mu_intersects_ground);
 }
 
+void ComputeSingleScattering(
+	IN(AtmosphereParameters) atmosphere,
+	IN(TransmittanceTexture) transmittance_texture,
+	uint2 texture_size,
+	Length r, Number mu, Number mu_s, Number nu,
+	bool ray_r_mu_intersects_ground,
+	OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie);
+
+float3 GetTotalScatteringLerped(float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
+	AtmosphereParameters atm = GetAtmParameters();
+	return
+		InternalGetRayleighLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+		+ InternalGetMieLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+		+ InternalGetMultipleLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+}
+
 float3 GetTotalScatteringLerped(float r, float mu, float mu_s, float nu) {
 	AtmosphereParameters atm = GetAtmParameters();
 	bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
-
-	return 
-		InternalGetRayleighLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
-		+ InternalGetMieLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
-		+ InternalGetMultipleLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+	return GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground);
 }
 
 #endif

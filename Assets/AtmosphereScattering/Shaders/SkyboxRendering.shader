@@ -71,6 +71,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				AtmosphereParameters atm = GetAtmParameters();
 				float3 camera = _WorldSpaceCameraPos + float3(0, atm.bottom_radius, 0);
 				float r = length(camera);
+				r = max(r, atm.bottom_radius + 1.0f);	//r below bottom_radius causes glitch.
 				Length rmu = dot(camera, view_ray);
 
 				Length distance_to_top_atmosphere_boundary = -rmu -
@@ -93,6 +94,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
 
 				float3 transmittance = GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu) * (ray_r_mu_intersects_ground ? 0.0f : 1.0f);
+
 				float3 direct_sun_strength = 0.0f;
 				{
 					float cos_sunedge = cos(atm.sun_angular_radius);

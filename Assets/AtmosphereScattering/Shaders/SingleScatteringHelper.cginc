@@ -58,8 +58,7 @@ void ComputeSingleScattering(
 		mie_sum += mie_i * weight_i;
 	}
 	//Phase function terms are not added yet. See GetScattering.(And also, we need to store rayleigh and mie seprately, since they use different phase functions.)
-	rayleigh = rayleigh_sum * dx  *
-		atmosphere.rayleigh_scattering;
+	rayleigh = rayleigh_sum * dx  * atmosphere.solar_irradiance * atmosphere.rayleigh_scattering;
 	mie = mie_sum * dx * atmosphere.solar_irradiance * atmosphere.mie_scattering;
 }
 

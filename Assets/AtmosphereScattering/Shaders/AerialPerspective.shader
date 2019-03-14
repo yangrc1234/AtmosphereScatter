@@ -62,21 +62,26 @@
 				AtmosphereParameters atm = GetAtmParameters();
 				float3 view_ray = normalize(worldPos.xyz - _WorldSpaceCameraPos);
 				float distance = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, i.scrPos));
-				if (distance > _ProjectionParams.z - 1.0f) {
+				if (distance / _ProjectionParams.z > 0.999f) {
 					return original;
 				}
 
 				float r, mu, mu_s, nu;
 				float r_d, mu_d, mu_s_d;	//Current pixel on screen's info
 				CalculateRMuMusFromPosViewdir(atm, _WorldSpaceCameraPos, view_ray, _WorldSpaceLightPos0, r, mu, mu_s, nu);
-				CalculateRMuMusForDistancePoint(r, mu, mu_s, nu, distance, r_d, mu_d, mu_s_d);
-
-				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu);
+				float d1, d2;
+				bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu, d1, d2);
+				CalculateRMuMusForDistancePoint(atm, r, mu, mu_s, nu, distance, r_d, mu_d, mu_s_d);
+				
 				//Transmittance to target point.
 				float3 transmittanceToTarget = GetTransmittanceLerped(r, mu, distance, ray_r_mu_intersects_ground);
+				
+				//Here the two ray (r, mu) and (r_d, mu_d) is pointing same direction. 
+				//so ray_r_mu_intersects_ground should apply to both of them. 
+				//If we do intersect calculation later, some precision problems might appear, causing glitches near horizontal view dir.
 				float3 scatteringBetween =
-					GetTotalScatteringLerped(r, mu, mu_s, nu)
-					- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu) * transmittanceToTarget;
+					GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)		
+					- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
 				scatteringBetween *= _LightScale;
 				return half4(original * transmittanceToTarget + scatteringBetween, 1.0);
 			}
