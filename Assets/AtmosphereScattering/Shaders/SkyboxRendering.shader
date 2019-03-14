@@ -102,7 +102,7 @@ Shader "Skybox/AtmosphereScatteringPrecomputed"
 						direct_sun_strength = transmittance * (nu - cos_sunedge) / (1.0f - cos_sunedge);
 					}
 				}
-				return half4( _LightScale * (direct_sun_strength + GetTotalScatteringLerped(r, mu, mu_s, nu)), 0.0f);
+				return half4( _LightScale * (direct_sun_strength + GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)), 0.0f);
 			}
 			ENDCG
 		}

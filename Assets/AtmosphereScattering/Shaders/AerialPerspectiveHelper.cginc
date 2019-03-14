@@ -109,8 +109,8 @@ void ComputeSingleScattering(
 float3 GetTotalScatteringLerped(float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) {
 	AtmosphereParameters atm = GetAtmParameters();
 	return
-		InternalGetRayleighLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
-		+ InternalGetMieLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+		InternalGetRayleighLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
+		+ InternalGetMieLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground)
 		+ InternalGetMultipleLerped(atm, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
 }
 
