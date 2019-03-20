@@ -120,4 +120,26 @@ float3 GetTotalScatteringLerped(float r, float mu, float mu_s, float nu) {
 	return GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground);
 }
 
+//Evaluate the RGB radiance when unity calculates (1, 1, 1) on the screen(when default).
+//By default, directional light of intensity 1 will make a white diffuse surface with color (1, 1, 1) on the screen.
+//We assume that directional light is sun at zenith, and we know sun's irradiance of real-world.
+//And we could get how much radiance is into our eye, since diffuse is view independent, we could know radiance = irradiance / (2 * PI)
+//And 1 = ratio * irradiance / (2 * PI)
+float IrradianceToIntensity() {
+	//Get "normal" solar irradiance value from here https://meteoexploration.com/products/solarcalc.php
+	float sun_irradiance = 138.9f;
+	float ratio = (2.0f * PI) / sun_irradiance;
+	return ratio;
+}
+
+float3 EvaluateSunDiskRadianceOfUnitIrradiance(AtmosphereParameters atm, float r, float mu, float nu) {
+	//Evaluate sun's solid angle by formula omega = 2 * PI * ( 1 - cos(sun_angular_radius)) (https://en.wikipedia.org/wiki/Solid_angle)
+	float cos_sun_angular_radius = cos(atm.sun_angular_radius);
+	float sun_solid_angle = 2 * PI * (1.0f - cos_sun_angular_radius);
+	float3 radiance = 1.0f / sun_solid_angle;
+	float3 radianceTransmitted = radiance * GetTransmittanceToTopAtmosphereBoundaryLerped(r, mu);
+	radianceTransmitted *= max(0.0f, (nu - cos_sun_angular_radius) / (1.0f - cos_sun_angular_radius));
+	return radianceTransmitted;
+}
+
 #endif

@@ -17,6 +17,7 @@
 			
 			#include "UnityCG.cginc"
 			#include "AerialPerspectiveHelper.cginc"
+			#include "Lighting.cginc"
 			float4 _ProjectionExtents;
 
 			struct appdata
@@ -79,10 +80,11 @@
 				//Here the two ray (r, mu) and (r_d, mu_d) is pointing same direction. 
 				//so ray_r_mu_intersects_ground should apply to both of them. 
 				//If we do intersect calculation later, some precision problems might appear, causing glitches near horizontal view dir.
+				float3 sun_irradiance = (_LightColor0.rgb / IrradianceToIntensity());
 				float3 scatteringBetween =
 					GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)		
 					- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
-				scatteringBetween *= _LightScale;
+				scatteringBetween *= _LightScale * sun_irradiance;
 				return half4(original * transmittanceToTarget + scatteringBetween, 1.0);
 			}
 			ENDCG
