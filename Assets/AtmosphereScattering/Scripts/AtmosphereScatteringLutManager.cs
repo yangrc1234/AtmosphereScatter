@@ -7,12 +7,12 @@ using UnityEngine;
 namespace Yangrc.AtmosphereScattering {
 
     public class AtmosphereScatteringLutManager : MonoBehaviour , ProgressiveLutUpdater.ITimeLogger{
-        public AtmosphereScatteringLutManager instance {
+        public static AtmosphereScatteringLutManager instance {
             get {
                 return _instance;
             }
         }
-        private AtmosphereScatteringLutManager _instance;
+        private static AtmosphereScatteringLutManager _instance;
 
         [SerializeField]
         private ComputeShader computeShader;
@@ -118,6 +118,103 @@ namespace Yangrc.AtmosphereScattering {
         public void Log(string itemName) {
             if (outputDebug)
                 Debug.Log(itemName);
+        }
+
+        public Vector3 GetRadianceAtPosZero(float mu_s) {
+            var t = atmosphereConfig.SunRadianceOnAtmosphere;
+            var transmittance = TransmittanceCalculate.GetTransmittanceToSun(atmosphereConfig, atmosphereConfig.atmosphere_bot_radius, mu_s);
+            t.Scale(transmittance);
+            return t;
+        }
+    }
+
+    public static class TransmittanceCalculate {
+
+        static float ClampCosine(float mu) {
+            return Mathf.Clamp(mu, -1.0f, 1.0f);
+        }
+
+        static float ClampDistance(float d) {
+            return Mathf.Max(d, 0.0f);
+        }
+
+        static float ClampRadius(AtmosphereConfig atmosphere, float r) {
+            return Mathf.Clamp(r, atmosphere.atmosphere_bot_radius, atmosphere.atmosphere_top_radius);
+        }
+
+        static float SafeSqrt(float a) {
+            return Mathf.Sqrt(Mathf.Max(a, 0.0f));
+        }
+
+        static float DistanceToTopAtmosphereBoundary(AtmosphereConfig atmosphere,
+            float r, float mu) {
+            float discriminant = r * r * (mu * mu - 1.0f) +
+                atmosphere.atmosphere_top_radius * atmosphere.atmosphere_top_radius;
+            return ClampDistance(-r * mu + SafeSqrt(discriminant));
+        }
+
+        static float GetScaleHeight(float altitude, float scale_height) {
+            return Mathf.Exp(-altitude / scale_height);
+        }
+
+        static float ComputeOpticalLengthToTopAtmosphereBoundary(
+            AtmosphereConfig atmosphere, float r, float mu, float scale_height) {
+            // Number of intervals for the numerical integration.
+            const int SAMPLE_COUNT = 500;
+            // The integration step, i.e. the length of each integration interval.
+            float dx =
+                DistanceToTopAtmosphereBoundary(atmosphere, r, mu) / (float)SAMPLE_COUNT;
+            // Integration loop.
+            float result = 0.0f;
+            for (int i = 0; i <= SAMPLE_COUNT; ++i) {
+                float d_i = (float)i * dx;
+                // Distance between the current sample point and the planet center.
+                float r_i = Mathf.Sqrt(d_i * d_i + 2.0f * r * mu * d_i + r * r);
+                // Number density at the current sample point (divided by the number density
+                // at the bottom of the atmosphere, yielding a dimensionless number).
+                float y_i = GetScaleHeight(r_i - atmosphere.atmosphere_bot_radius, scale_height);
+                // Sample weight (from the trapezoidal rule).
+                float weight_i = i == 0 || i == SAMPLE_COUNT ? 0.5f : 1.0f;
+                result += y_i * weight_i * dx;
+            }
+            return result;
+        }
+
+        public static Vector3 ComputeTransmittanceToTopAtmosphereBoundary(
+            AtmosphereConfig atmosphere, float r, float mu) {
+            Vector3 rayleigh = atmosphere.rayleigh_scattering_spectrum *
+                ComputeOpticalLengthToTopAtmosphereBoundary(
+                    atmosphere, r, mu, atmosphere.rayleigh_scale_height);
+            Vector3 mie = Vector3.one * atmosphere.mie_extinction_spectrum *
+                ComputeOpticalLengthToTopAtmosphereBoundary(
+                    atmosphere, r, mu, atmosphere.mie_scale_height);
+            Vector3 ozone = atmosphere.ozone_extinction_spectrum *
+                ComputeOpticalLengthToTopAtmosphereBoundary(
+                    atmosphere, r, mu, atmosphere.ozone_scale_height);
+            var sum = rayleigh + mie + ozone;
+            return new Vector3(
+                Mathf.Exp(-sum.x),
+                Mathf.Exp(-sum.y),
+                Mathf.Exp(-sum.z)
+                );
+        }
+
+        public static Vector3 GetTransmittanceToSun(
+            AtmosphereConfig atmosphere,
+            float r, float mu_s) {
+            float sin_theta_h = atmosphere.atmosphere_bot_radius / r;
+            float cos_theta_h = -Mathf.Sqrt(Mathf.Max(1.0f - sin_theta_h * sin_theta_h, 0.0f));
+
+            var transmittanceToCenter = ComputeTransmittanceToTopAtmosphereBoundary(
+                atmosphere, r, mu_s);
+
+            var lower_bound = -sin_theta_h * atmosphere.atmosphere_sun_angular_radius;
+            var upper_bound = sin_theta_h * atmosphere.atmosphere_sun_angular_radius;
+
+            var fraction = (mu_s - cos_theta_h - lower_bound) / (upper_bound - lower_bound);
+            fraction = Mathf.Clamp01(fraction);
+
+            return transmittanceToCenter * fraction;
         }
     }
 }
