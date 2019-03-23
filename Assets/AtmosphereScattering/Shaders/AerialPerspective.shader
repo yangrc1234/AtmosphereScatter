@@ -47,6 +47,7 @@
 			sampler2D _MainTex;
 			sampler2D _CameraDepthTexture;
 			float _LightScale;
+			float3 _SunRadianceOnAtm;
 
 			void CalculateRMuMusForDistancePoint(Length r, Number mu, Number mu_s, Number nu, Number d, OUT(Length) r_d, OUT(Number) mu_d, OUT(Number) mu_s_d);
 			void CalculateRMuMusFromPosViewdir(AtmosphereParameters atm, float3 pos, float3 view_ray, float3 sun_direction, OUT(float) mu, OUT(float) mu_s, OUT(float) nu);
@@ -80,12 +81,10 @@
 				//Here the two ray (r, mu) and (r_d, mu_d) is pointing same direction. 
 				//so ray_r_mu_intersects_ground should apply to both of them. 
 				//If we do intersect calculation later, some precision problems might appear, causing glitches near horizontal view dir.
-				float3 sun_irradiance = (_LightColor0.rgb / IrradianceToIntensity());
 				float3 scatteringBetween =
 					GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)		
 					- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
-				scatteringBetween *= _LightScale * sun_irradiance;
-				return half4(original * transmittanceToTarget + scatteringBetween, 1.0);
+				return half4(original * transmittanceToTarget + _SunRadianceOnAtm * scatteringBetween, 1.0);
 			}
 			ENDCG
 		}

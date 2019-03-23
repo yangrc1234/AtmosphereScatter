@@ -20,6 +20,10 @@ public class AerialPerspective : MonoBehaviour {
         material.SetVector("_ProjectionExtents", camera.GetProjectionExtents());
         Graphics.Blit(source, destination, material, 0);
     }
+
+    private void Update() {
+        //Control sun intensity.
+    }
 }
 
 public static class CameraExtension {
