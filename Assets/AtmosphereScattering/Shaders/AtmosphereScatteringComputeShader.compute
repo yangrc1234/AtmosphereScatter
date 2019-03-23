@@ -285,3 +285,52 @@ void ClearCombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 gro
 
 	ScatteringSumTarget[id.xyz] = 0.0f;
 }
+
+/*
+==========================================
+||		Camera Volume Tex				||
+==========================================
+*/
+#include "AerialPerspectiveHelper.cginc"
+RWTexture3D<float3> CameraVolumeScattering;
+RWTexture3D<float3> CameraVolumeTransmittance;
+float4x4 Inverse_VP;	//Used to transform uvw to actual world pos. This should be independent from graphics API to avoid troubles. We assume the clip space range is [-1, 1]
+float3 CameraPos;
+
+[numthreads(8, 8, 8)]
+void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
+
+	uint3 whd;
+	CameraVolumeScattering.GetDimensions(whd);
+	float3 texelSize = 1.0f / whd;
+	
+	//Get uvw from id.
+	float3 uvw = (id + 0.5f) * texelSize;
+
+	float4 clipSpacePos = float4((uvw - 0.5f) * 2.0f, 1.0f);
+
+	float4 worldPos = Inverse_VP * clipSpacePos;
+	worldPos /= worldPos.w;
+
+	float3 viewDir = worldPos.xyz - CameraPos;
+	float distance = length(viewDir);
+	viewDir = normalize(viewDir);
+
+	AtmosphereParameters atm = GetAtmParameters();
+	float3 earthToCamera = CameraPos + float3(0.0f, atm.atmosphere_bot_radius, 0.0f);
+
+	float r = length(earthToCamera);
+	float rmu = dot(viewDir, earthToCamera);
+	float mu = rmu / r;
+
+	bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu, d1, d2);
+
+	float3 transmittanceToTarget = GetTransmittanceLerped(r, mu, distance, ray_r_mu_intersects_ground);
+	float3 scatteringBetween =
+		GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)
+		- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
+
+	CameraVolumeScattering[id] = scatteringBetween;
+	CameraVolumeTransmittance[id] = transmittanceToTarget;
+}

@@ -206,6 +206,7 @@ namespace Yangrc.AtmosphereScattering {
         public Vector2Int transmittanceSize = new Vector2Int(512, 512);
         public Vector3Int scatteringSize = new Vector3Int(32, 32, 128);
         public Vector2Int irradianceSize = new Vector2Int(32, 32);
+        public Vector3Int cameraVolumeSize = new Vector3Int(128, 128, 32);
         private static class Keys {
             private static readonly int transmittanceSize = Shader.PropertyToID("TransmittanceSize");
             private static readonly int scatteringSize = Shader.PropertyToID("ScatteringSize");
@@ -348,6 +349,19 @@ namespace Yangrc.AtmosphereScattering {
             ) {
             CreateLUT(ref MultipleScatteringLUT, "Multiple Scattering Combined Final", lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z, RenderTextureFormat.ARGBFloat, true);
             CreateLUT(ref IrradianceLUT, "Irradiance Combined Final", lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 0, RenderTextureFormat.ARGBFloat, true);
+        }
+
+        public static void CreateCameraAlignedVolumeTexture(
+                    ref RenderTexture target,
+                    AtmLutGenerateConfig lutConfig
+                    ) {
+            CreateLUT(ref target, 
+                "CameraVolumeTex", 
+                lutConfig.cameraVolumeSize.x, 
+                lutConfig.cameraVolumeSize.y, 
+                lutConfig.cameraVolumeSize.z, 
+                RenderTextureFormat.ARGBFloat,  //RGB for scattering intensity, A for transmittance.
+                false);
         }
 
         public static void UpdateTransmittance(
