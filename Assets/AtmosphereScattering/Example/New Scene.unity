@@ -157,7 +157,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 1000
+  far clip plane: 10000
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -195,7 +195,7 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 7102893}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ff26db721962cdf4a8edcdfa9a767d2a, type: 3}
   m_Name: 
@@ -228,6 +228,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b535dacf702e20c4b9ef528e42081835, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  volumeTexSize: {x: 128, y: 128, z: 32}
 --- !u!1 &74323546
 GameObject:
   m_ObjectHideFlags: 0
@@ -338,6 +339,7 @@ MonoBehaviour:
     transmittanceSize: {x: 256, y: 128}
     scatteringSize: {x: 32, y: 128, z: 32}
     irradianceSize: {x: 64, y: 32}
+    cameraVolumeSize: {x: 128, y: 128, z: 32}
   atmosphereConfig: {fileID: 11400000, guid: 8e73e89daf00b8447b2410427953df25, type: 2}
   skyboxMaterial: {fileID: 0}
 --- !u!4 &297555712

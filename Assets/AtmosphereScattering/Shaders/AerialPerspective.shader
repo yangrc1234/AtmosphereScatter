@@ -63,11 +63,15 @@
 
 				AtmosphereParameters atm = GetAtmParameters();
 				float3 view_ray = normalize(worldPos.xyz - _WorldSpaceCameraPos);
-				float distance = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, i.scrPos));
+				float raw_depth = SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, i.scrPos);
+				float depth = Linear01Depth(raw_depth);
+				float distance = LinearEyeDepth(raw_depth);
 				if (distance / _ProjectionParams.z > 0.999f) {
 					return original;
 				}
 
+				float3 pixel_pos = worldPos + distance * view_ray;
+#if 0
 				float r, mu, mu_s, nu;
 				float r_d, mu_d, mu_s_d;	//Current pixel on screen's info
 				CalculateRMuMusFromPosViewdir(atm, _WorldSpaceCameraPos, view_ray, _WorldSpaceLightPos0, r, mu, mu_s, nu);
@@ -84,6 +88,12 @@
 				float3 scatteringBetween =
 					GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)		
 					- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
+#else
+				float3 uvw = float3(i.uv, depth);
+				float3 transmittanceToTarget = GetTransmittanceWithCameraVolume(uvw);
+				return float4(transmittanceToTarget, 1.0f);
+				float3 scatteringBetween = GetScatteringWithCameraVolume(uvw);
+#endif
 				return half4(original * transmittanceToTarget + _SunRadianceOnAtm * scatteringBetween, 1.0);
 			}
 			ENDCG

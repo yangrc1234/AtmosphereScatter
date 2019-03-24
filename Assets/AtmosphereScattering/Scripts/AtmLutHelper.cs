@@ -256,6 +256,8 @@ namespace Yangrc.AtmosphereScattering {
         private static int ClearCombineGroundIrradianceLUT;
         private static int ClearCombineMultipleScatteringLUT;
 
+        private static int CalculateCameraScatteringVolume;
+
         /// <summary>
         /// These functions help do all the "SetXXX" stuff.
         /// So we can focus on how to generate Luts.
@@ -272,6 +274,8 @@ namespace Yangrc.AtmosphereScattering {
             SumMultipleScatteringLUT = computeShader.FindKernel("CombineMultipleScatteringLUT");
             ClearCombineGroundIrradianceLUT = computeShader.FindKernel("ClearCombineGroundIrradianceLUT");
             ClearCombineMultipleScatteringLUT = computeShader.FindKernel("ClearCombineMultipleScatteringLUT");
+
+            CalculateCameraScatteringVolume = computeShader.FindKernel("CalculateCameraScatteringVolume");
         }
 
         public static void ApplyComputeShaderParams(AtmLutGenerateConfig lutConfig, AtmosphereConfig atmConfig) {
@@ -352,15 +356,23 @@ namespace Yangrc.AtmosphereScattering {
         }
 
         public static void CreateCameraAlignedVolumeTexture(
-                    ref RenderTexture target,
-                    AtmLutGenerateConfig lutConfig
+                    ref RenderTexture transmittance,
+                    ref RenderTexture scattering,
+                    Vector3Int volumeTexSize
                     ) {
-            CreateLUT(ref target, 
-                "CameraVolumeTex", 
-                lutConfig.cameraVolumeSize.x, 
-                lutConfig.cameraVolumeSize.y, 
-                lutConfig.cameraVolumeSize.z, 
-                RenderTextureFormat.ARGBFloat,  //RGB for scattering intensity, A for transmittance.
+            CreateLUT(ref transmittance,
+                "CameraVolumeTransmittance",
+                volumeTexSize.x,
+                volumeTexSize.y,
+                volumeTexSize.z,
+                RenderTextureFormat.ARGBFloat,
+                false);
+            CreateLUT(ref scattering,
+                "CameraVolumeScattering",
+                volumeTexSize.x,
+                volumeTexSize.y,
+                volumeTexSize.z,
+                RenderTextureFormat.ARGBFloat,
                 false);
         }
 
@@ -514,6 +526,22 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumTarget", target);
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumAdder", irradianceOfSingleOrder);
             computeShader.Dispatch(SumGroundIrradianceLUT, lutConfig.irradianceSize.x / 32, lutConfig.irradianceSize.y / 32, 1);
+        }
+
+        public static void UpdateCameraVolume(
+            RenderTexture transmittanceTarget,
+            RenderTexture scatteringTarget,
+            Vector3Int volumeSize,
+            Vector3 cameraPos,
+            Vector3 sunDirection,
+            Matrix4x4 Inverse_VP
+            ) {
+            computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeTransmittance", transmittanceTarget);
+            computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeScattering", scatteringTarget);
+            computeShader.SetVector("_CameraPos", cameraPos);
+            computeShader.SetVector("_SunDir", sunDirection);
+            computeShader.SetMatrix("Inverse_VP", Inverse_VP);
+            computeShader.Dispatch(CalculateCameraScatteringVolume, volumeSize.x / 8, volumeSize.y / 8, volumeSize.z / 8);
         }
     }
 
