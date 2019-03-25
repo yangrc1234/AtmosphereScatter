@@ -528,19 +528,39 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.Dispatch(SumGroundIrradianceLUT, lutConfig.irradianceSize.x / 32, lutConfig.irradianceSize.y / 32, 1);
         }
 
+        /// <summary>
+        /// Calculate camera frustrum aligned volume.
+        /// See frostbite slider for more.
+        /// </summary>
+        /// <param name="transmittanceTarget">Target to store transmittance</param>
+        /// <param name="scatteringTarget">Target to store scattering</param>
+        /// <param name="volumeSize">Volume tex size, used to determine dispatch call params</param>
+        /// <param name="cameraPos">Camera world pos</param>
+        /// <param name="sunDirection">Sun direction(pointing towards sun)</param>
+        /// <param name="frustrumCorners">four corners of camera frustrum(bl, br, tl, tr). We can't use projection matrix since we divide depth equal range, so we manually interpolate uvw using these corners and near/far plane</param>
+        /// <param name="nearFarPlane">Near and far plane distance</param>
         public static void UpdateCameraVolume(
             RenderTexture transmittanceTarget,
             RenderTexture scatteringTarget,
             Vector3Int volumeSize,
             Vector3 cameraPos,
             Vector3 sunDirection,
-            Matrix4x4 Inverse_VP
+            Vector3[] frustrumCorners,
+            Vector2 nearFarPlane
             ) {
+            //Here we need calculated lerpable luts. This kinda break the code sepration. Any better idea?
+            AtmosphereScatteringLutManager.instance.UpdateComputeShaderValueForLerpedAp(computeShader, CalculateCameraScatteringVolume);
+
             computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeTransmittance", transmittanceTarget);
             computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeScattering", scatteringTarget);
             computeShader.SetVector("_CameraPos", cameraPos);
             computeShader.SetVector("_SunDir", sunDirection);
-            computeShader.SetMatrix("Inverse_VP", Inverse_VP);
+
+            computeShader.SetVector("_CamBotLeft", frustrumCorners[0]);
+            computeShader.SetVector("_CamBotRight", frustrumCorners[1]);
+            computeShader.SetVector("_CamTopLeft", frustrumCorners[2]);
+            computeShader.SetVector("_CamTopRight", frustrumCorners[3]);
+            computeShader.SetVector("_NearFarPlane", nearFarPlane);
             computeShader.Dispatch(CalculateCameraScatteringVolume, volumeSize.x / 8, volumeSize.y / 8, volumeSize.z / 8);
         }
     }

@@ -31,21 +31,34 @@ namespace Yangrc.AtmosphereScattering {
         private RenderTexture scatteringVolume;
         public Vector3Int volumeTexSize = new Vector3Int(128, 128, 32);
 
+        Vector3[] _FrustumCorners = new Vector3[4];
         //Generate camera volume texture.
         private void OnPreRender() {
             if (RenderSettings.sun == null)
                 return;
+            // get four corners of camera frustom in world space
+            // bottom left
+            _FrustumCorners[0] = camera.ViewportToWorldPoint(new Vector3(0, 0, camera.farClipPlane));
+            // bottom right
+            _FrustumCorners[1] = camera.ViewportToWorldPoint(new Vector3(1, 0, camera.farClipPlane));
+            // top left
+            _FrustumCorners[2] = camera.ViewportToWorldPoint(new Vector3(0, 1, camera.farClipPlane));
+            // top right
+            _FrustumCorners[3] = camera.ViewportToWorldPoint(new Vector3(1, 1, camera.farClipPlane));
+            
             //Render camera volume texture.
             var projection_matrix = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
             AtmLutHelper.CreateCameraAlignedVolumeTexture(ref transmittanceVolume, ref scatteringVolume, volumeTexSize);
             AtmLutHelper.UpdateCameraVolume(
                 transmittanceVolume, 
                 scatteringVolume, 
-                volumeTexSize, 
+                volumeTexSize,
                 transform.position, 
-                RenderSettings.sun.transform.forward, 
-                projection_matrix.inverse * camera.cameraToWorldMatrix
+                -RenderSettings.sun.transform.forward,
+                _FrustumCorners,
+                new Vector2(camera.nearClipPlane, camera.farClipPlane)
                 );
+            
             //Set it.
             Shader.SetGlobalTexture("_CameraVolumeTransmittance", transmittanceVolume);
             Shader.SetGlobalTexture("_CameraVolumeScattering", scatteringVolume);

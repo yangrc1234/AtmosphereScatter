@@ -135,7 +135,7 @@ Camera volume stuff.
 */
 sampler3D _CameraVolumeTransmittance;
 sampler3D _CameraVolumeScattering;
-float4x4 _Camera_VP;
+
 float3 GetTransmittanceWithCameraVolume(float3 uvw) {
 	return tex3Dlod(_CameraVolumeTransmittance, float4(uvw, 0.0f)).rgb;
 }

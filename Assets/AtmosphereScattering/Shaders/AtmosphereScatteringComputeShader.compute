@@ -302,6 +302,12 @@ float3 _CameraPos;
 float3 _SunRadianceOnAtm;
 float3 _SunDir;
 
+float2 _NearFarPlane;
+float3 _CamBotLeft;
+float3 _CamBotRight;
+float3 _CamTopLeft;
+float3 _CamTopRight;
+
 [numthreads(8, 8, 8)]
 void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
 	id += _ThreadOffset * uint3(8, 8, 8);
@@ -313,14 +319,17 @@ void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 group
 	//Get uvw from id.
 	float3 uvw = (id + 0.5f) * texelSize;
 
-	float4 clipSpacePos = float4((uvw - 0.5f) * 2.0f, 1.0f);
-	clipSpacePos.z = (clipSpacePos.z + 1.0f) / 2.0f;
+	float3 viewDir;
 
-	float4 worldPos = mul(Inverse_VP, clipSpacePos);
-	worldPos /= worldPos.w;
+	//Get camera ray.
+	{
+		float3 t1 = lerp(_CamBotLeft, _CamBotRight, uvw.x);
+		float3 t2 = lerp(_CamTopLeft, _CamTopRight, uvw.x);
+		float3 ray_end = lerp(t1, t2, uvw.y);
+		viewDir = ray_end - _CameraPos;
+	}
 
-	float3 viewDir = worldPos.xyz - _CameraPos;
-	float distance = length(viewDir);
+	float distance = lerp(_NearFarPlane.x, _NearFarPlane.y, uvw.z);
 	viewDir = normalize(viewDir);
 
 	AtmosphereParameters atm = GetAtmParameters();
@@ -334,11 +343,12 @@ void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 group
 	bool ray_r_mu_intersects_ground = RayIntersectsGround(atm, r, mu, d1, d2);
 	CalculateRMuMusForDistancePoint(atm, r, mu, mu_s, nu, distance, r_d, mu_d, mu_s_d);
 
-	float3 transmittanceToTarget = GetTransmittanceLerped(r, mu, distance, ray_r_mu_intersects_ground);
+	float3 transmittanceToTarget = GetTransmittanceLerped(
+			r, mu, distance, ray_r_mu_intersects_ground);
 	float3 scatteringBetween =
 		GetTotalScatteringLerped(r, mu, mu_s, nu, ray_r_mu_intersects_ground)
 		- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
 
-	CameraVolumeTransmittance[id] = distance / 1000.0f;
-	CameraVolumeScattering[id] = 0.0f;
+	CameraVolumeTransmittance[id] = transmittanceToTarget;
+	CameraVolumeScattering[id] = scatteringBetween;
 }

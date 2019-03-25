@@ -64,14 +64,14 @@
 				AtmosphereParameters atm = GetAtmParameters();
 				float3 view_ray = normalize(worldPos.xyz - _WorldSpaceCameraPos);
 				float raw_depth = SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, i.scrPos);
-				float depth = Linear01Depth(raw_depth);
 				float distance = LinearEyeDepth(raw_depth);
 				if (distance / _ProjectionParams.z > 0.999f) {
 					return original;
 				}
+				float depth = (distance - _ProjectionParams.x) / (_ProjectionParams.z - _ProjectionParams.x);
 
 				float3 pixel_pos = worldPos + distance * view_ray;
-#if 0
+#if 1
 				float r, mu, mu_s, nu;
 				float r_d, mu_d, mu_s_d;	//Current pixel on screen's info
 				CalculateRMuMusFromPosViewdir(atm, _WorldSpaceCameraPos, view_ray, _WorldSpaceLightPos0, r, mu, mu_s, nu);
@@ -91,7 +91,6 @@
 #else
 				float3 uvw = float3(i.uv, depth);
 				float3 transmittanceToTarget = GetTransmittanceWithCameraVolume(uvw);
-				return float4(transmittanceToTarget, 1.0f);
 				float3 scatteringBetween = GetScatteringWithCameraVolume(uvw);
 #endif
 				return half4(original * transmittanceToTarget + _SunRadianceOnAtm * scatteringBetween, 1.0);

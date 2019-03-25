@@ -25,6 +25,16 @@ namespace Yangrc.AtmosphereScattering {
         //We prepare 3 updater, the 0-index one is "currently updating", 1-index is "just updated", and 2-index is the oldest one.
         //During rendering, we interpolate 1 and 2, and updating 0.
         private ProgressiveLutUpdater[] pingPongUpdaters = new ProgressiveLutUpdater[3];
+
+        public ProgressiveLutUpdater newestLut { get {
+                return pingPongUpdaters[1];
+            } }
+        public ProgressiveLutUpdater oldLut {
+            get {
+                return pingPongUpdaters[2];
+            }
+        }
+
         //Shift all updater to one right.
         private void RotatePingpongUpdater() {
             var temp = pingPongUpdaters[pingPongUpdaters.Length-1];
@@ -95,6 +105,23 @@ namespace Yangrc.AtmosphereScattering {
             }
         }
 
+        public void UpdateComputeShaderValueForLerpedAp(ComputeShader shader, int kernelId) {
+            newestLut.atmConfigUsedToUpdate.Apply(shader);
+            shader.SetTexture(kernelId, "_SingleRayleigh_1", oldLut.singleRayleigh);
+            shader.SetTexture(kernelId, "_SingleMie_1", oldLut.singleMie);
+            shader.SetTexture(kernelId, "_SingleRayleigh_2", newestLut.singleRayleigh);
+            shader.SetTexture(kernelId, "_SingleMie_2", newestLut.singleMie);
+            shader.SetTexture(kernelId, "_MultipleScattering_1", oldLut.multiScatteringCombine);
+            shader.SetTexture(kernelId, "_MultipleScattering_2", newestLut.multiScatteringCombine);
+            shader.SetTexture(kernelId, "_Transmittance_1", oldLut.transmittance);
+            shader.SetTexture(kernelId, "_Transmittance_2", newestLut.transmittance);
+            shader.SetTexture(kernelId, "_GroundIrradiance_1", oldLut.groundIrradianceCombine);
+            shader.SetTexture(kernelId, "_GroundIrradiance_2", newestLut.groundIrradianceCombine);
+            shader.SetVector("_ScatteringSize", (Vector3)lutConfig.scatteringSize);
+            shader.SetVector("_GroundIrradianceSize", (Vector2)lutConfig.irradianceSize);
+            shader.SetVector("_TransmittanceSize", (Vector2)lutConfig.transmittanceSize);
+        }
+
         public void UpdateSkyboxMaterial(ProgressiveLutUpdater updater, ProgressiveLutUpdater oldUpdater) {
             if (this.skyboxMaterial==null)
                 this.skyboxMaterial = new Material(Shader.Find("Skybox/AtmosphereScatteringPrecomputed"));
@@ -120,9 +147,10 @@ namespace Yangrc.AtmosphereScattering {
                 Debug.Log(itemName);
         }
 
-        public Vector3 GetRadianceAtPosZero(float mu_s) {
+        public Vector3 GetRadianceAt(float mu_s, Vector3 basePosition) {
             var t = atmosphereConfig.SunRadianceOnAtmosphere;
-            var transmittance = TransmittanceCalculate.GetTransmittanceToSun(atmosphereConfig, atmosphereConfig.atmosphere_bot_radius, mu_s);
+            var r = basePosition + new Vector3(0.0f, atmosphereConfig.atmosphere_bot_radius, 0.0f);
+            var transmittance = TransmittanceCalculate.GetTransmittanceToSun(atmosphereConfig, r.magnitude, mu_s);
             t.Scale(transmittance);
             return t;
         }
