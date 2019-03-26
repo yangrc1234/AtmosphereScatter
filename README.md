@@ -1,7 +1,7 @@
 # Precomputed Physically Based Atmosphere Scattering for Unity3D
+![](./Screenshots/1.png)
 This is an implementation of atmosphere scattering effect in Unity3D.  
 The effect is physically based. Heavily used code from [1].  
-This repo is currently really early-stage. Only skybox rendering and opaque object aerial perspective is included. More features will be available later.
 
 ## Current features
 Physically based calculation  
@@ -24,8 +24,8 @@ When atmosphere density is high, aerial perspective around horizon is glitchy.
 ## TODO
 - [x] Aerial perspective on opaque objects
 - [ ] Better sun disc
-- [ ] Auto adjusts sun intensity.
-- [ ] Aerial perspective on transparent objects
+- [x] Auto adjusts sun intensity.
+- [x] Aerial perspective on transparent objects
 - [ ] Integerate volume cloud rendering.
 - [ ] Optimization on rendertexture usage.
 - [ ] Moon and stars.
@@ -38,3 +38,4 @@ When atmosphere density is high, aerial perspective around horizon is glitchy.
 ## History.
 2019/03/10 v0.1, Added README.md
 2019/03/14 Added aerial perspective on opaque objects by full-screen post-processing.
+2019/03/26 Now ap info is rendered into 2 3D volume texture aligned with camera, storing transmittance and scattering. I added a shader to show how to add ap effect to a transparent shader.
