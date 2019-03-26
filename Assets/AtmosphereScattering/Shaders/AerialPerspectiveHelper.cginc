@@ -21,7 +21,7 @@ float2 _TransmittanceSize;
 float3 _ScatteringSize;
 float2 _GroundIrradianceSize;
 
-uniform float _LerpValue;
+float _LerpValue;
 
 float3 GetTransmittanceLerped(float r, float mu, float d, bool intersect_ground) {
 	AtmosphereParameters atm = GetAtmParameters();

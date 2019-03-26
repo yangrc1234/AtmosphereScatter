@@ -4,14 +4,12 @@ using UnityEngine;
 
 namespace Yangrc.AtmosphereScattering {
 
-
-
     public class AerialPerspective : MonoBehaviour {
         private new Camera camera;
         private void Start() {
             camera = GetComponent<Camera>();
-            if (camera.depthTextureMode == DepthTextureMode.None)
-                camera.depthTextureMode = DepthTextureMode.Depth;
+            if ((camera.depthTextureMode & DepthTextureMode.Depth) == 0)
+                camera.depthTextureMode |= DepthTextureMode.Depth;
             material = new Material(Shader.Find("Hidden/Yangrc/AerialPerspective"));
         }
 
@@ -64,6 +62,11 @@ namespace Yangrc.AtmosphereScattering {
             Shader.SetGlobalTexture("_CameraVolumeScattering", scatteringVolume);
             var vp_matrix = projection_matrix * camera.worldToCameraMatrix;
             Shader.SetGlobalMatrix("_Camera_VP", vp_matrix);
+        }
+
+        private void OnDisable() {
+            Shader.SetGlobalTexture("_CameraVolumeTransmittance", null);
+            Shader.SetGlobalTexture("_CameraVolumeScattering", null);
         }
     }
 
