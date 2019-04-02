@@ -256,8 +256,6 @@ namespace Yangrc.AtmosphereScattering {
         private static int ClearCombineGroundIrradianceLUT;
         private static int ClearCombineMultipleScatteringLUT;
 
-        private static int CalculateCameraScatteringVolume;
-
         /// <summary>
         /// These functions help do all the "SetXXX" stuff.
         /// So we can focus on how to generate Luts.
@@ -274,8 +272,6 @@ namespace Yangrc.AtmosphereScattering {
             SumMultipleScatteringLUT = computeShader.FindKernel("CombineMultipleScatteringLUT");
             ClearCombineGroundIrradianceLUT = computeShader.FindKernel("ClearCombineGroundIrradianceLUT");
             ClearCombineMultipleScatteringLUT = computeShader.FindKernel("ClearCombineMultipleScatteringLUT");
-
-            CalculateCameraScatteringVolume = computeShader.FindKernel("CalculateCameraScatteringVolume");
         }
 
         public static void ApplyComputeShaderParams(AtmLutGenerateConfig lutConfig, AtmosphereConfig atmConfig) {
@@ -283,7 +279,7 @@ namespace Yangrc.AtmosphereScattering {
             atmConfig.Apply(computeShader);
         }
 
-        private static void CreateLUT(ref RenderTexture result, string name, int width, int height, int zsize, RenderTextureFormat format, bool forceReplace = false) {
+        public static void CreateLUT(ref RenderTexture result, string name, int width, int height, int zsize, RenderTextureFormat format, bool forceReplace = false) {
             if (result != null) {
                 if (!forceReplace && result.name == name && result.width == width && result.height == height && result.volumeDepth == zsize && result.format == format)
                     return;
@@ -353,27 +349,6 @@ namespace Yangrc.AtmosphereScattering {
             ) {
             CreateLUT(ref MultipleScatteringLUT, "Multiple Scattering Combined Final", lutConfig.scatteringSize.x, lutConfig.scatteringSize.y, lutConfig.scatteringSize.z, RenderTextureFormat.ARGBFloat, true);
             CreateLUT(ref IrradianceLUT, "Irradiance Combined Final", lutConfig.irradianceSize.x, lutConfig.irradianceSize.y, 0, RenderTextureFormat.ARGBFloat, true);
-        }
-
-        public static void CreateCameraAlignedVolumeTexture(
-                    ref RenderTexture transmittance,
-                    ref RenderTexture scattering,
-                    Vector3Int volumeTexSize
-                    ) {
-            CreateLUT(ref transmittance,
-                "CameraVolumeTransmittance",
-                volumeTexSize.x,
-                volumeTexSize.y,
-                volumeTexSize.z,
-                RenderTextureFormat.ARGBFloat,
-                false);
-            CreateLUT(ref scattering,
-                "CameraVolumeScattering",
-                volumeTexSize.x,
-                volumeTexSize.y,
-                volumeTexSize.z,
-                RenderTextureFormat.ARGBFloat,
-                false);
         }
 
         public static void UpdateTransmittance(
@@ -526,42 +501,6 @@ namespace Yangrc.AtmosphereScattering {
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumTarget", target);
             computeShader.SetTexture(SumGroundIrradianceLUT, "GroundIrradianceSumAdder", irradianceOfSingleOrder);
             computeShader.Dispatch(SumGroundIrradianceLUT, lutConfig.irradianceSize.x / 32, lutConfig.irradianceSize.y / 32, 1);
-        }
-
-        /// <summary>
-        /// Calculate camera frustrum aligned volume.
-        /// See frostbite slider for more.
-        /// </summary>
-        /// <param name="transmittanceTarget">Target to store transmittance</param>
-        /// <param name="scatteringTarget">Target to store scattering</param>
-        /// <param name="volumeSize">Volume tex size, used to determine dispatch call params</param>
-        /// <param name="cameraPos">Camera world pos</param>
-        /// <param name="sunDirection">Sun direction(pointing towards sun)</param>
-        /// <param name="frustrumCorners">four corners of camera frustrum(bl, br, tl, tr). We can't use projection matrix since we divide depth equal range, so we manually interpolate uvw using these corners and near/far plane</param>
-        /// <param name="nearFarPlane">Near and far plane distance</param>
-        public static void UpdateCameraVolume(
-            RenderTexture transmittanceTarget,
-            RenderTexture scatteringTarget,
-            Vector3Int volumeSize,
-            Vector3 cameraPos,
-            Vector3 sunDirection,
-            Vector3[] frustrumCorners,
-            Vector2 nearFarPlane
-            ) {
-            //Here we need calculated lerpable luts. This kinda break the code sepration. Any better idea?
-            AtmosphereScatteringLutManager.instance.UpdateComputeShaderValueForLerpedAp(computeShader, CalculateCameraScatteringVolume);
-
-            computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeTransmittance", transmittanceTarget);
-            computeShader.SetTexture(CalculateCameraScatteringVolume, "CameraVolumeScattering", scatteringTarget);
-            computeShader.SetVector("_CameraPos", cameraPos);
-            computeShader.SetVector("_SunDir", sunDirection);
-
-            computeShader.SetVector("_CamBotLeft", frustrumCorners[0]);
-            computeShader.SetVector("_CamBotRight", frustrumCorners[1]);
-            computeShader.SetVector("_CamTopLeft", frustrumCorners[2]);
-            computeShader.SetVector("_CamTopRight", frustrumCorners[3]);
-            computeShader.SetVector("_NearFarPlane", nearFarPlane);
-            computeShader.Dispatch(CalculateCameraScatteringVolume, volumeSize.x / 8, volumeSize.y / 8, volumeSize.z / 8);
         }
     }
 

@@ -13,7 +13,8 @@ namespace Yangrc.AtmosphereScattering {
             }
         }
         private static AtmosphereScatteringLutManager _instance;
-
+        [SerializeField]
+        private VolumeShadowCapture volumeShadowCapture;
         [SerializeField]
         private ComputeShader computeShader;
         [SerializeField]
@@ -53,11 +54,12 @@ namespace Yangrc.AtmosphereScattering {
             }
             _instance = this;
             AtmLutHelper.Init(computeShader);
+            CameraVolumeHelper.Init(computeShader);
             for (int i = 0; i < pingPongUpdaters.Length; i++) {
                 pingPongUpdaters[i] = new ProgressiveLutUpdater(null, lutConfig, this);
                 pingPongUpdaters[i].name = "Updater " + i;
             }
-
+            
             //Quickly complete two set luts.
             for (int i = 1; i <= 2; i++) {
                 pingPongUpdaters[i].atmConfigToUse = atmosphereConfig;
@@ -67,6 +69,7 @@ namespace Yangrc.AtmosphereScattering {
             UpdateSkyboxMaterial(pingPongUpdaters[1], pingPongUpdaters[2]);
 
             KickOffUpdater(pingPongUpdaters[0]);
+
         }
 
         private void KickOffUpdater(ProgressiveLutUpdater updater) {

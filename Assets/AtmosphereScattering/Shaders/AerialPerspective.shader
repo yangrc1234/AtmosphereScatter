@@ -53,6 +53,7 @@
 			void CalculateRMuMusFromPosViewdir(AtmosphereParameters atm, float3 pos, float3 view_ray, float3 sun_direction, OUT(float) mu, OUT(float) mu_s, OUT(float) nu);
 			float3 GetTransmittanceToTopAtmosphereBoundaryLerped(float r, float mu);
 
+			UNITY_DECLARE_SHADOWMAP(_ApShadowMap);	//We need to manually set this.
 			half4 frag (v2f i) : SV_Target
 			{ 
 				float3 vspos = float3(i.vsray, 1.0);
@@ -71,7 +72,7 @@
 				float depth = (distance - _ProjectionParams.x) / (_ProjectionParams.z - _ProjectionParams.x);
 
 				float3 pixel_pos = worldPos + distance * view_ray;
-#if 1
+#if 0
 				float r, mu, mu_s, nu;
 				float r_d, mu_d, mu_s_d;	//Current pixel on screen's info
 				CalculateRMuMusFromPosViewdir(atm, _WorldSpaceCameraPos, view_ray, _WorldSpaceLightPos0, r, mu, mu_s, nu);
@@ -92,6 +93,7 @@
 				float3 uvw = float3(i.uv, depth);
 				float3 transmittanceToTarget = GetTransmittanceWithCameraVolume(uvw);
 				float3 scatteringBetween = GetScatteringWithCameraVolume(uvw);
+				return UNITY_SAMPLE_SHADOW(_ApShadowMap, float3(i.uv, 0.0));
 #endif
 				return half4(original * transmittanceToTarget + _SunRadianceOnAtm * scatteringBetween, 1.0);
 			}

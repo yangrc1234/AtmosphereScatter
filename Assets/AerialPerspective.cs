@@ -1,11 +1,14 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Yangrc.AtmosphereScattering {
 
     public class AerialPerspective : MonoBehaviour {
         private new Camera camera;
+        [SerializeField]
+        private new Light light;
         private void Start() {
             camera = GetComponent<Camera>();
             if ((camera.depthTextureMode & DepthTextureMode.Depth) == 0)
@@ -13,6 +16,7 @@ namespace Yangrc.AtmosphereScattering {
             material = new Material(Shader.Find("Hidden/Yangrc/AerialPerspective"));
         }
 
+        RenderTexture csmTemp;
         private Material material;
 
         [ImageEffectOpaque]
@@ -27,7 +31,7 @@ namespace Yangrc.AtmosphereScattering {
 
         private RenderTexture transmittanceVolume;
         private RenderTexture scatteringVolume;
-        public Vector3Int volumeTexSize = new Vector3Int(128, 128, 32);
+        public Vector3Int volumeTexSize = new Vector3Int(160, 90, 64);
 
         Vector3[] _FrustumCorners = new Vector3[4];
         //Generate camera volume texture.
@@ -46,8 +50,8 @@ namespace Yangrc.AtmosphereScattering {
             
             //Render camera volume texture.
             var projection_matrix = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
-            AtmLutHelper.CreateCameraAlignedVolumeTexture(ref transmittanceVolume, ref scatteringVolume, volumeTexSize);
-            AtmLutHelper.UpdateCameraVolume(
+            CameraVolumeHelper.CreateCameraAlignedVolumeTexture(ref transmittanceVolume, ref scatteringVolume, volumeTexSize);
+            CameraVolumeHelper.UpdateCameraVolume(
                 transmittanceVolume, 
                 scatteringVolume, 
                 volumeTexSize,

@@ -19,7 +19,6 @@ Helper functions. See https://ebruneton.github.io/precomputed_atmospheric_scatte
 #pragma kernel CombineMultipleScatteringLUT
 #pragma kernel ClearCombineGroundIrradianceLUT
 #pragma kernel ClearCombineMultipleScatteringLUT
-#pragma kernel CalculateCameraScatteringVolume
 
 /*
 Common parameters.
@@ -288,6 +287,72 @@ void ClearCombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 gro
 	ScatteringSumTarget[id.xyz] = 0.0f;
 }
 
+#pragma kernel CalculateCameraShadowVolume
+#pragma kernel CalculateCameraShadowVolumeAccumulate
+#pragma kernel CalculateCameraScatteringVolume
+/*
+==========================================
+||		Camera Volume Tex Shadow		||
+==========================================
+*/
+
+float3 _CameraPos;
+float3 _SunRadianceOnAtm;
+float3 _SunDir;
+float2 _NearFarPlane;
+float3 _CamBotLeft;
+float3 _CamBotRight;
+float3 _CamTopLeft;
+float3 _CamTopRight;
+
+#include "AerialPerspectiveShadowSampleHelper.cginc"
+RWTexture3D<float3> CameraVolumeShadow;
+[numthreads(8, 8, 8)]
+void CalculateCameraShadowVolume(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
+
+	uint3 whd;
+	CameraVolumeShadow.GetDimensions(whd.x, whd.y, whd.z);
+	float3 texelSize = 1.0f / whd;
+
+	//Get uvw from id.
+	float3 uvw = (id + 0.5f) * texelSize;
+
+	float3 viewDir;
+	//Get camera ray.
+	{
+		float3 t1 = lerp(_CamBotLeft, _CamBotRight, uvw.x);
+		float3 t2 = lerp(_CamTopLeft, _CamTopRight, uvw.x);
+		float3 ray_end = lerp(t1, t2, uvw.y);
+		viewDir = ray_end - _CameraPos;
+	}
+
+	float distance = lerp(_NearFarPlane.x, _NearFarPlane.y, uvw.z);
+	viewDir = normalize(viewDir);
+
+	float3 world_pos = _CameraPos + distance * viewDir;
+
+	CameraVolumeShadow[id] = GetShadow(world_pos);
+}
+
+
+/*
+==========================================
+||	Camera Volume Tex Shadow Accumulate	||
+==========================================
+*/
+#include "AerialPerspectiveShadowSampleHelper.cginc"
+RWTexture3D<float3> CameraVolumeShadowAccumulate;
+[numthreads(8, 8, 8)]
+void CalculateCameraShadowVolumeAccumulate(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
+	id += _ThreadOffset * uint3(8, 8, 8);
+
+	for (int i = id.z; i >= 0; i--) {
+		CameraVolumeShadowAccumulate[id] += CameraVolumeShadow[uint3(id.xy, i)];
+	}
+	CameraVolumeShadowAccumulate[id] /= id.z;
+}
+
 /*
 ==========================================
 ||		Camera Volume Tex				||
@@ -297,16 +362,6 @@ void ClearCombineMultipleScatteringLUT(uint3 id : SV_DispatchThreadID, uint3 gro
 #include "AerialPerspectiveHelper.cginc"
 RWTexture3D<float3> CameraVolumeTransmittance;
 RWTexture3D<float3> CameraVolumeScattering;
-float4x4 Inverse_VP;
-float3 _CameraPos;
-float3 _SunRadianceOnAtm;
-float3 _SunDir;
-
-float2 _NearFarPlane;
-float3 _CamBotLeft;
-float3 _CamBotRight;
-float3 _CamTopLeft;
-float3 _CamTopRight;
 
 [numthreads(8, 8, 8)]
 void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 groupid : SV_GroupThreadID) {
@@ -350,5 +405,5 @@ void CalculateCameraScatteringVolume(uint3 id : SV_DispatchThreadID, uint3 group
 		- GetTotalScatteringLerped(r_d, mu_d, mu_s_d, nu, ray_r_mu_intersects_ground) * transmittanceToTarget;
 
 	CameraVolumeTransmittance[id] = transmittanceToTarget;
-	CameraVolumeScattering[id] = scatteringBetween;
+	CameraVolumeScattering[id] = scatteringBetween * CameraVolumeShadowAccumulate[id];
 }
