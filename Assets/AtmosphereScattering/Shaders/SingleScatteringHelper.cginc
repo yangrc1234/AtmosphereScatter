@@ -21,7 +21,7 @@ void ComputeSingleScatteringIntegrand(
 		GetTransmittanceToSun(
 			atmosphere, transmittance_texture, texture_size, r_d, mu_s_d);
 	rayleigh = transmittance * GetScaleHeight(r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height);
-	mie = transmittance * GetScaleHeight(r_d - atmosphere.bottom_radius, atmosphere.rayleigh_scale_height);
+	mie = transmittance * GetScaleHeight(r_d - atmosphere.bottom_radius, atmosphere.mie_scale_height);
 }
 
 void ComputeSingleScattering(
