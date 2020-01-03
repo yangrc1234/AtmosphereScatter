@@ -21,6 +21,7 @@ namespace Yangrc.AtmosphereScattering {
         private bool outputDebug = false;
         public AtmLutGenerateConfig lutConfig;
         public AtmosphereConfig atmosphereConfig;
+        [System.NonSerialized]
         public Material skyboxMaterial;
 
         //We prepare 3 updater, the 0-index one is "currently updating", 1-index is "just updated", and 2-index is the oldest one.
